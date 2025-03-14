@@ -1,2 +1,22 @@
 
 /* App-specific styles can go here */
+.btn-hover-glow:hover {
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+}
+
+.price-tag {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.75rem;
+  background: rgba(212, 175, 55, 0.15);
+  color: #D4AF37;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+.price-tag.sale {
+  background: rgba(220, 38, 38, 0.15);
+  color: #dc2626;
+}

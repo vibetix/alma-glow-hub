@@ -27,14 +27,22 @@ const timeSlots = [
   '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM'
 ];
 
+// Service types and their details
+const serviceTypes = [
+  { id: 'spa', name: 'Spa Treatment' },
+  { id: 'skincare', name: 'Skincare Service' },
+  { id: 'hair', name: 'Hair Service' }
+];
+
 const Booking = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
-  const serviceType = searchParams.get('service') || 'spa';
+  const initialServiceType = searchParams.get('service') || 'spa';
   
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string | undefined>(undefined);
+  const [serviceType, setServiceType] = useState(initialServiceType);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -78,7 +86,7 @@ const Booking = () => {
     
     toast({
       title: "Booking Confirmed",
-      description: `Your ${serviceType} appointment has been booked for ${format(selectedDate, 'MMMM d, yyyy')} at ${selectedTime}.`,
+      description: `Your ${getServiceTitle()} appointment has been booked for ${format(selectedDate, 'MMMM d, yyyy')} at ${selectedTime}.`,
     });
     
     // Navigate back to the relevant service page
@@ -89,23 +97,15 @@ const Booking = () => {
 
   // Get service title based on type
   const getServiceTitle = () => {
-    switch(serviceType) {
-      case 'spa':
-        return 'Spa Treatment';
-      case 'skincare':
-        return 'Skincare Service';
-      case 'hair':
-        return 'Hair Service';
-      default:
-        return 'Service';
-    }
+    const service = serviceTypes.find(s => s.id === serviceType);
+    return service ? service.name : 'Service';
   };
 
   return (
     <>
       <Navbar />
       <PageTransition>
-        <section className="relative h-[40vh] flex items-center">
+        <section className="relative h-[40vh] flex items-center pt-16">
           <div className="absolute inset-0 z-0">
             <img
               src={
@@ -145,6 +145,29 @@ const Booking = () => {
               <div className="lg:col-span-2">
                 <form onSubmit={handleSubmit} className="space-y-8">
                   <div className="space-y-4">
+                    <h2 className="heading-3">Service Details</h2>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="serviceType">Service Type</Label>
+                      <Select 
+                        value={serviceType} 
+                        onValueChange={setServiceType}
+                      >
+                        <SelectTrigger id="serviceType" className="w-full">
+                          <SelectValue placeholder="Select service type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {serviceTypes.map((service) => (
+                            <SelectItem key={service.id} value={service.id}>
+                              {service.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
                     <h2 className="heading-3">Select Date & Time</h2>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -171,6 +194,7 @@ const Booking = () => {
                               selected={selectedDate}
                               onSelect={setSelectedDate}
                               initialFocus
+                              className="pointer-events-auto"
                               disabled={(date) => 
                                 date < new Date(new Date().setHours(0, 0, 0, 0)) || 
                                 date.getDay() === 0
