@@ -6,14 +6,16 @@ import { Input } from '@/components/ui/input';
 
 export const Footer = () => {
   return (
-    <footer className="bg-alma-black text-white pt-16 pb-8">
+    <footer className="bg-alma-darkGreen text-white pt-16 pb-8">
       <div className="container-custom">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="space-y-4">
-            <h3 className="font-serif text-2xl font-bold tracking-tight">
-              ALMA<span className="text-alma-gold">BEAUTY</span>
-            </h3>
+            <img 
+              src="/lovable-uploads/fb6df437-d752-46c4-9f14-60e6145c5695.png" 
+              alt="Alma Beauty Logo" 
+              className="h-12"
+            />
             <p className="text-gray-300 max-w-xs">
               Elevate your beauty experience with our premium spa, skin care, and hair services.
             </p>
@@ -82,7 +84,7 @@ export const Footer = () => {
                 placeholder="Your email" 
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
               />
-              <Button className="bg-alma-gold hover:bg-opacity-90 text-black">
+              <Button className="bg-alma-gold hover:bg-opacity-90 text-alma-darkGreen">
                 Subscribe
               </Button>
             </div>

@@ -65,6 +65,7 @@ export default {
 				},
 				alma: {
 					gold: '#D4AF37',
+					darkGreen: '#0A3B1E',
 					beige: '#F5F5DC',
 					cream: '#FFFDD0',
 					sage: '#BCB88A',

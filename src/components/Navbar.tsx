@@ -49,9 +49,11 @@ export const Navbar = () => {
           to="/" 
           className="relative z-50"
         >
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-alma-black">
-            ALMA<span className="text-alma-gold">BEAUTY</span>
-          </h1>
+          <img 
+            src="/lovable-uploads/fb6df437-d752-46c4-9f14-60e6145c5695.png" 
+            alt="Alma Beauty Logo" 
+            className="h-12 md:h-14"
+          />
         </Link>
 
         {/* Desktop Navigation */}
@@ -62,7 +64,7 @@ export const Navbar = () => {
               to={link.href}
               className={cn(
                 "nav-link text-sm font-medium",
-                location.pathname === link.href && "active"
+                location.pathname === link.href ? "text-alma-gold after:bg-alma-gold" : "text-alma-darkGreen hover:text-alma-gold"
               )}
             >
               {link.label}
@@ -72,7 +74,7 @@ export const Navbar = () => {
 
         {/* Actions */}
         <div className="hidden md:flex items-center space-x-4">
-          <Link to="/cart" className="relative p-2 text-alma-black hover:text-alma-gold transition-colors">
+          <Link to="/cart" className="relative p-2 text-alma-darkGreen hover:text-alma-gold transition-colors">
             <ShoppingCart size={20} />
             <span className="absolute -top-1 -right-1 bg-alma-gold text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
               0
@@ -80,7 +82,7 @@ export const Navbar = () => {
           </Link>
           
           <Link to="/login">
-            <Button variant="ghost" size="sm" className="text-alma-black hover:text-alma-gold">
+            <Button variant="ghost" size="sm" className="text-alma-darkGreen hover:text-alma-gold">
               <User size={20} className="mr-2" /> 
               Login
             </Button>
@@ -90,7 +92,7 @@ export const Navbar = () => {
         {/* Mobile Menu Toggle */}
         <button 
           onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="md:hidden relative z-50 p-2"
+          className="md:hidden relative z-50 p-2 text-alma-darkGreen"
           aria-label="Toggle menu"
         >
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -106,7 +108,7 @@ export const Navbar = () => {
                   to={link.href}
                   className={cn(
                     "text-lg font-medium animate-fade-in-up",
-                    location.pathname === link.href ? "text-alma-gold" : "text-alma-black",
+                    location.pathname === link.href ? "text-alma-gold" : "text-alma-darkGreen",
                   )}
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
@@ -116,14 +118,14 @@ export const Navbar = () => {
             </nav>
             
             <div className="flex items-center space-x-4 mt-8 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-              <Link to="/cart" className="flex items-center text-alma-black">
+              <Link to="/cart" className="flex items-center text-alma-darkGreen">
                 <ShoppingCart size={20} className="mr-2" />
                 Cart (0)
               </Link>
               
               <div className="h-5 w-px bg-alma-gray mx-2"></div>
               
-              <Link to="/login" className="flex items-center text-alma-black">
+              <Link to="/login" className="flex items-center text-alma-darkGreen">
                 <User size={20} className="mr-2" /> 
                 Login
               </Link>
