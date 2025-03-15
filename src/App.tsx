@@ -4,6 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+// Pages
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import SpaServices from "./pages/SpaServices";
@@ -17,6 +19,14 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AboutUs from "./pages/AboutUs";
 
+// Admin Pages
+import Dashboard from "./pages/admin/Dashboard";
+import Users from "./pages/admin/Users";
+
+// Auth components
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -25,21 +35,43 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/spa" element={<SpaServices />} />
-          <Route path="/skincare" element={<SkinCareServices />} />
-          <Route path="/hair" element={<HairServices />} />
-          <Route path="/booking" element={<Booking />} />
-          <Route path="/shop" element={<Shop />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/about" element={<AboutUs />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/spa" element={<SpaServices />} />
+            <Route path="/skincare" element={<SkinCareServices />} />
+            <Route path="/hair" element={<HairServices />} />
+            <Route path="/booking" element={<Booking />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/about" element={<AboutUs />} />
+            
+            {/* Admin Routes (Protected) */}
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/users" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <Users />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* 404 Route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
