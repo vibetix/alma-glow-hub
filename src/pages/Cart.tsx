@@ -10,29 +10,27 @@ import { Input } from "@/components/ui/input";
 import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-// Sample cart items
-const initialCartItems = [
-  {
-    id: "1",
-    name: "Hydrating Face Serum",
-    price: 48.99,
-    quantity: 1,
-    image: "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1935&q=80",
-  },
-  {
-    id: "5",
-    name: "Luxury Bath Salts",
-    price: 36.99,
-    quantity: 2,
-    image: "https://images.unsplash.com/photo-1570194065650-d99fb4cb7260?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-  },
-];
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState(initialCartItems);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  // Load cart items from localStorage
+  useEffect(() => {
+    const storedCart = localStorage.getItem('cart');
+    if (storedCart) {
+      setCartItems(JSON.parse(storedCart));
+    }
+  }, []);
 
   // Calculate totals
   const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
@@ -44,16 +42,19 @@ const Cart = () => {
   const updateQuantity = (id: string, newQuantity: number) => {
     if (newQuantity < 1) return;
     
-    setCartItems(prevItems => 
-      prevItems.map(item => 
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      )
+    const updatedCart = cartItems.map(item => 
+      item.id === id ? { ...item, quantity: newQuantity } : item
     );
+    
+    setCartItems(updatedCart);
+    localStorage.setItem('cart', JSON.stringify(updatedCart));
   };
 
   // Remove item
   const removeItem = (id: string) => {
-    setCartItems(prevItems => prevItems.filter(item => item.id !== id));
+    const updatedCart = cartItems.filter(item => item.id !== id);
+    setCartItems(updatedCart);
+    localStorage.setItem('cart', JSON.stringify(updatedCart));
     
     toast({
       title: "Item removed",

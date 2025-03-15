@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, CalendarClock, Sparkles, Award, Check } from 'lucide-react';
@@ -77,7 +76,7 @@ const HomePage = () => {
       <section className="relative min-h-screen flex items-center">
         <div className="absolute inset-0 z-0">
           <img 
-            src="https://images.unsplash.com/photo-1607007745685-1d758c59111d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" 
+            src="https://images.unsplash.com/photo-1470259078422-826894b933aa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2074&q=80" 
             alt="Beauty salon background" 
             className="w-full h-full object-cover"
           />
