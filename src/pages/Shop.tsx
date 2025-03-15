@@ -11,6 +11,14 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { 
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { 
   Select,
   SelectContent,
   SelectItem,
@@ -30,34 +38,39 @@ import {
 import { sampleProducts } from '@/data/products';
 
 const categories = ["All", "Skin Care", "Hair Care", "Bath & Body", "Tools"];
+const ITEMS_PER_PAGE = 6;
 
 const Shop = () => {
   const [products, setProducts] = useState(sampleProducts);
+  const [filteredProducts, setFilteredProducts] = useState(sampleProducts);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [priceRange, setPriceRange] = useState([0, 100]);
   const [sortBy, setSortBy] = useState("recommended");
   const [isFiltered, setIsFiltered] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   
+  // Filter and sort products
   useEffect(() => {
-    let filteredProducts = [...sampleProducts];
+    let result = [...sampleProducts];
     
     // Filter by search term
     if (searchTerm) {
-      filteredProducts = filteredProducts.filter(product => 
+      result = result.filter(product => 
         product.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
     // Filter by category
     if (selectedCategory !== "All") {
-      filteredProducts = filteredProducts.filter(product => 
+      result = result.filter(product => 
         product.category === selectedCategory
       );
     }
     
     // Filter by price range
-    filteredProducts = filteredProducts.filter(product => {
+    result = result.filter(product => {
       const price = product.isSale && product.salePrice 
         ? product.salePrice 
         : product.price;
@@ -66,22 +79,26 @@ const Shop = () => {
     
     // Sort products
     if (sortBy === "price-asc") {
-      filteredProducts.sort((a, b) => {
+      result.sort((a, b) => {
         const priceA = a.isSale && a.salePrice ? a.salePrice : a.price;
         const priceB = b.isSale && b.salePrice ? b.salePrice : b.price;
         return priceA - priceB;
       });
     } else if (sortBy === "price-desc") {
-      filteredProducts.sort((a, b) => {
+      result.sort((a, b) => {
         const priceA = a.isSale && a.salePrice ? a.salePrice : a.price;
         const priceB = b.isSale && b.salePrice ? b.salePrice : b.price;
         return priceB - priceA;
       });
     } else if (sortBy === "new") {
-      filteredProducts.sort((a, b) => (a.isNew === b.isNew) ? 0 : a.isNew ? -1 : 1);
+      result.sort((a, b) => (a.isNew === b.isNew) ? 0 : a.isNew ? -1 : 1);
     }
     
-    setProducts(filteredProducts);
+    setFilteredProducts(result);
+    setTotalPages(Math.ceil(result.length / ITEMS_PER_PAGE));
+    
+    // Reset to first page when filters change
+    setCurrentPage(1);
     
     // Check if any filters are applied
     setIsFiltered(
@@ -92,6 +109,14 @@ const Shop = () => {
       sortBy !== "recommended"
     );
   }, [searchTerm, selectedCategory, priceRange, sortBy]);
+  
+  // Get current page items
+  useEffect(() => {
+    const indexOfLastProduct = currentPage * ITEMS_PER_PAGE;
+    const indexOfFirstProduct = indexOfLastProduct - ITEMS_PER_PAGE;
+    const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
+    setProducts(currentProducts);
+  }, [filteredProducts, currentPage]);
   
   const resetFilters = () => {
     setSearchTerm("");
@@ -117,6 +142,46 @@ const Shop = () => {
       y: 0,
       transition: { duration: 0.4 }
     }
+  };
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+    
+    return (
+      <Pagination className="mt-8">
+        <PaginationContent>
+          {currentPage > 1 && (
+            <PaginationItem>
+              <PaginationPrevious 
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                className="cursor-pointer"
+              />
+            </PaginationItem>
+          )}
+          
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <PaginationItem key={page}>
+              <PaginationLink 
+                isActive={currentPage === page}
+                onClick={() => setCurrentPage(page)}
+                className="cursor-pointer"
+              >
+                {page}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+          
+          {currentPage < totalPages && (
+            <PaginationItem>
+              <PaginationNext 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                className="cursor-pointer"
+              />
+            </PaginationItem>
+          )}
+        </PaginationContent>
+      </Pagination>
+    );
   };
 
   return (
@@ -360,18 +425,23 @@ const Shop = () => {
               
               {/* Products Grid */}
               {products.length > 0 ? (
-                <motion.div 
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                  variants={staggeredAnimation}
-                  initial="hidden"
-                  animate="visible"
-                >
-                  {products.map((product) => (
-                    <motion.div key={product.id} variants={fadeInUp}>
-                      <ProductCard {...product} />
-                    </motion.div>
-                  ))}
-                </motion.div>
+                <>
+                  <motion.div 
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    variants={staggeredAnimation}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    {products.map((product) => (
+                      <motion.div key={product.id} variants={fadeInUp}>
+                        <ProductCard {...product} />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                  
+                  {/* Pagination */}
+                  {renderPagination()}
+                </>
               ) : (
                 <div className="py-12 text-center">
                   <h3 className="text-xl font-medium mb-2">No products found</h3>

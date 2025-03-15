@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [cartItemsCount, setCartItemsCount] = useState(0);
   const location = useLocation();
   const isMobile = useIsMobile();
 
@@ -20,6 +21,34 @@ export const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Update cart count whenever localStorage changes
+  useEffect(() => {
+    const updateCartCount = () => {
+      const storedCart = localStorage.getItem('cart');
+      if (storedCart) {
+        const cartItems = JSON.parse(storedCart);
+        const count = cartItems.reduce((total, item) => total + item.quantity, 0);
+        setCartItemsCount(count);
+      } else {
+        setCartItemsCount(0);
+      }
+    };
+
+    // Update immediately
+    updateCartCount();
+
+    // Listen for storage events to update cart count in real-time across tabs
+    window.addEventListener('storage', updateCartCount);
+
+    // Setup an interval to check for cart updates (needed for same-tab updates)
+    const intervalId = setInterval(updateCartCount, 1000);
+
+    return () => {
+      window.removeEventListener('storage', updateCartCount);
+      clearInterval(intervalId);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     setIsMenuOpen(false);
@@ -76,9 +105,11 @@ export const Navbar = () => {
         <div className="hidden md:flex items-center space-x-4">
           <Link to="/cart" className="relative p-2 text-alma-darkGreen hover:text-alma-gold transition-colors">
             <ShoppingCart size={20} />
-            <span className="absolute -top-1 -right-1 bg-alma-gold text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-              0
-            </span>
+            {cartItemsCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-alma-gold text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {cartItemsCount}
+              </span>
+            )}
           </Link>
           
           <Link to="/login">
@@ -120,7 +151,7 @@ export const Navbar = () => {
             <div className="flex items-center space-x-4 mt-8 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
               <Link to="/cart" className="flex items-center text-alma-darkGreen">
                 <ShoppingCart size={20} className="mr-2" />
-                Cart (0)
+                Cart {cartItemsCount > 0 && `(${cartItemsCount})`}
               </Link>
               
               <div className="h-5 w-px bg-alma-gray mx-2"></div>

@@ -105,7 +105,7 @@ const Booking = () => {
     <>
       <Navbar />
       <PageTransition>
-        <section className="relative h-[40vh] flex items-center pt-16">
+        <section className="relative pt-24 pb-16 h-[40vh] flex items-center">
           <div className="absolute inset-0 z-0">
             <img
               src={
