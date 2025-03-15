@@ -23,8 +23,8 @@ export const ServiceLayout = ({
     <>
       <Navbar />
       <PageTransition>
-        {/* Hero Section */}
-        <section className="relative h-[60vh] flex items-center">
+        {/* Hero Section - adding pt-24 (padding-top) to account for navbar height */}
+        <section className="relative h-[60vh] flex items-center pt-24">
           <div className="absolute inset-0 z-0">
             <img
               src={heroImage}
