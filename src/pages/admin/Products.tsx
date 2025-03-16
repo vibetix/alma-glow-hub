@@ -36,44 +36,89 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { sampleProducts } from "@/data/products";
-import { Edit, Image, Plus, Search, Trash } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, Plus, X, Upload, Edit, Trash2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
-// Expanded product type
-type Product = {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  salePrice?: number;
-  imageUrl: string;
-  category: string;
-  stockQuantity?: number;
-  isNew?: boolean;
-  isSale?: boolean;
-};
+// Mock product data
+const MOCK_PRODUCTS = [
+  {
+    id: 1,
+    name: "Revitalizing Face Serum",
+    description: "A lightweight serum that hydrates and revitalizes the skin.",
+    price: 49.99,
+    category: "skin care",
+    stock: 25,
+    images: [
+      "/placeholder.svg",
+      "/placeholder.svg",
+    ]
+  },
+  {
+    id: 2,
+    name: "Nourishing Hair Mask",
+    description: "Deep conditioning treatment for damaged hair.",
+    price: 34.99,
+    category: "hair",
+    stock: 42,
+    images: [
+      "/placeholder.svg",
+    ]
+  },
+  {
+    id: 3,
+    name: "Essential Oil Set",
+    description: "Collection of 6 essential oils for aromatherapy and massage.",
+    price: 79.99,
+    category: "spa",
+    stock: 18,
+    images: [
+      "/placeholder.svg",
+      "/placeholder.svg",
+      "/placeholder.svg",
+    ]
+  },
+  {
+    id: 4,
+    name: "Relaxing Bath Salts",
+    description: "Mineral-rich bath salts for a relaxing soak.",
+    price: 24.99,
+    category: "spa",
+    stock: 37,
+    images: [
+      "/placeholder.svg",
+    ]
+  },
+  {
+    id: 5,
+    name: "Anti-Aging Moisturizer",
+    description: "Rich moisturizer that reduces fine lines and wrinkles.",
+    price: 59.99,
+    category: "skin care",
+    stock: 31,
+    images: [
+      "/placeholder.svg",
+      "/placeholder.svg",
+    ]
+  },
+];
 
 const Products = () => {
-  const [products, setProducts] = useState<Product[]>(
-    sampleProducts.map(product => ({
-      ...product,
-      stockQuantity: Math.floor(Math.random() * 100) + 1, // Add mock stock quantity
-    }))
-  );
+  const [products, setProducts] = useState(MOCK_PRODUCTS);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
-  const [newProduct, setNewProduct] = useState<Partial<Product>>({
+  const [newProduct, setNewProduct] = useState({
     name: "",
     description: "",
-    price: 0,
+    price: "",
     category: "",
-    stockQuantity: 1,
-    imageUrl: "",
+    stock: "",
   });
+
+  // For image upload
+  const [productImages, setProductImages] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Filter products based on search and category
   const filteredProducts = products.filter((product) => {
@@ -89,457 +134,366 @@ const Products = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    if (name === "price" || name === "stockQuantity") {
-      setNewProduct((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
-    } else {
-      setNewProduct((prev) => ({ ...prev, [name]: value }));
-    }
+    setNewProduct((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleAddProduct = () => {
-    // In a real app, we would save to the database
-    const productToAdd = {
-      ...newProduct,
-      id: (products.length + 1).toString(),
-      imageUrl: newProduct.imageUrl || "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b",
-      price: newProduct.price || 0,
-      stockQuantity: newProduct.stockQuantity || 0,
-      category: newProduct.category || "Skin Care",
-    } as Product;
-    
-    setProducts([...products, productToAdd]);
+    if (!newProduct.name || !newProduct.price || !newProduct.category || !newProduct.stock) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (productImages.length === 0) {
+      toast({
+        title: "No images",
+        description: "Please upload at least one product image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // In a real app, we would save the product to the database
+    const newProductData = {
+      id: products.length + 1,
+      name: newProduct.name,
+      description: newProduct.description,
+      price: parseFloat(newProduct.price),
+      category: newProduct.category,
+      stock: parseInt(newProduct.stock),
+      images: productImages,
+    };
+
+    setProducts([...products, newProductData]);
     setIsAddModalOpen(false);
+    
     // Reset form
     setNewProduct({
       name: "",
       description: "",
-      price: 0,
+      price: "",
       category: "",
-      stockQuantity: 1,
-      imageUrl: "",
+      stock: "",
+    });
+    setProductImages([]);
+    
+    toast({
+      title: "Product added",
+      description: "The product has been added successfully.",
     });
   };
 
-  const handleEditProduct = () => {
-    if (!currentProduct) return;
-    
-    // In a real app, we would update the database
-    const updatedProducts = products.map((product) =>
-      product.id === currentProduct.id ? currentProduct : product
-    );
-    
-    setProducts(updatedProducts);
-    setIsEditModalOpen(false);
-    setCurrentProduct(null);
+  const handleDeleteProduct = (id: number) => {
+    setProducts(products.filter((product) => product.id !== id));
+    toast({
+      title: "Product deleted",
+      description: "The product has been removed.",
+    });
   };
 
-  const handleDeleteProduct = () => {
-    if (!currentProduct) return;
+  // Simulate image upload
+  const handleImageUpload = () => {
+    setIsUploading(true);
     
-    // In a real app, we would delete from the database
-    const updatedProducts = products.filter(
-      (product) => product.id !== currentProduct.id
-    );
-    
-    setProducts(updatedProducts);
-    setIsDeleteModalOpen(false);
-    setCurrentProduct(null);
+    // In a real app, this would be an actual file upload
+    setTimeout(() => {
+      setProductImages([...productImages, "/placeholder.svg"]);
+      setIsUploading(false);
+      
+      toast({
+        title: "Image uploaded",
+        description: "The image has been added to the product.",
+      });
+    }, 1000);
   };
-
-  const openEditModal = (product: Product) => {
-    setCurrentProduct(product);
-    setIsEditModalOpen(true);
+  
+  const removeImage = (index: number) => {
+    setProductImages(productImages.filter((_, i) => i !== index));
   };
-
-  const openDeleteModal = (product: Product) => {
-    setCurrentProduct(product);
-    setIsDeleteModalOpen(true);
-  };
-
-  const categories = ["Skin Care", "Hair Care", "Bath & Body", "Tools"];
 
   return (
     <AdminLayout title="Product Management">
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Products</CardTitle>
-              <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogTrigger asChild>
-                  <Button className="flex gap-1">
-                    <Plus size={18} />
-                    <span className="hidden md:inline">Add Product</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add New Product</DialogTitle>
-                    <DialogDescription>
-                      Create a new product for the shop.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="name">Product Name</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        value={newProduct.name}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        name="description"
-                        value={newProduct.description}
-                        onChange={handleInputChange}
-                        rows={3}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="price">Price ($)</Label>
-                        <Input
-                          id="price"
-                          name="price"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={newProduct.price}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="stockQuantity">Stock Quantity</Label>
-                        <Input
-                          id="stockQuantity"
-                          name="stockQuantity"
-                          type="number"
-                          min="0"
-                          value={newProduct.stockQuantity}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="category">Category</Label>
-                      <Select
-                        value={newProduct.category}
-                        onValueChange={(value) =>
-                          setNewProduct((prev) => ({
-                            ...prev,
-                            category: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger id="category">
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="imageUrl">Image URL</Label>
-                      <Input
-                        id="imageUrl"
-                        name="imageUrl"
-                        placeholder="https://example.com/image.jpg"
-                        value={newProduct.imageUrl}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
-                      Cancel
+      <Tabs defaultValue="products" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="products">All Products</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="products" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Products</CardTitle>
+                <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="flex gap-1">
+                      <Plus size={18} />
+                      <span className="hidden md:inline">Add Product</span>
                     </Button>
-                    <Button onClick={handleAddProduct}>Add Product</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-            <CardDescription>
-              Manage products available in the shop.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search products..."
-                  className="pl-8"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Select
-                  value={categoryFilter}
-                  onValueChange={setCategoryFilter}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="hidden md:table-cell">Category</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead className="hidden md:table-cell">Stock</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                        No products found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredProducts.map((product) => (
-                      <TableRow key={product.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-md bg-gray-100 overflow-hidden">
-                              {product.imageUrl ? (
-                                <img
-                                  src={product.imageUrl}
-                                  alt={product.name}
-                                  className="h-full w-full object-cover"
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add New Product</DialogTitle>
+                      <DialogDescription>
+                        Create a new product listing to sell on your shop.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="name">Product Name*</Label>
+                        <Input
+                          id="name"
+                          name="name"
+                          value={newProduct.name}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea
+                          id="description"
+                          name="description"
+                          rows={4}
+                          value={newProduct.description}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="price">Price ($)*</Label>
+                          <Input
+                            id="price"
+                            name="price"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={newProduct.price}
+                            onChange={handleInputChange}
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="stock">Stock Quantity*</Label>
+                          <Input
+                            id="stock"
+                            name="stock"
+                            type="number"
+                            min="0"
+                            value={newProduct.stock}
+                            onChange={handleInputChange}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="category">Category*</Label>
+                        <Select
+                          value={newProduct.category}
+                          onValueChange={(value) =>
+                            setNewProduct((prev) => ({
+                              ...prev,
+                              category: value,
+                            }))
+                          }
+                          required
+                        >
+                          <SelectTrigger id="category">
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="skin care">Skin Care</SelectItem>
+                            <SelectItem value="hair">Hair</SelectItem>
+                            <SelectItem value="spa">Spa</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="grid gap-2">
+                        <Label>Images*</Label>
+                        <div className="border rounded-md p-3">
+                          <div className="flex flex-wrap gap-3 mb-3">
+                            {productImages.map((image, index) => (
+                              <div key={index} className="relative group">
+                                <img 
+                                  src={image} 
+                                  alt="Product" 
+                                  className="w-20 h-20 object-cover rounded border"
                                 />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center">
-                                  <Image className="h-5 w-5 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-medium">{product.name}</div>
-                              {product.isNew && (
-                                <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
-                                  New
-                                </span>
-                              )}
-                              {product.isSale && (
-                                <span className="text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded ml-1">
-                                  Sale
-                                </span>
-                              )}
-                            </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeImage(index)}
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ))}
                           </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {product.category}
-                        </TableCell>
-                        <TableCell>
-                          {product.isSale && product.salePrice ? (
-                            <div>
-                              <span className="line-through text-muted-foreground">
-                                ${product.price.toFixed(2)}
-                              </span>{" "}
-                              <span className="font-medium text-red-600">
-                                ${product.salePrice.toFixed(2)}
-                              </span>
-                            </div>
-                          ) : (
-                            <span>${product.price.toFixed(2)}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {product.stockQuantity || 0}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openEditModal(product)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-red-600"
-                              onClick={() => openDeleteModal(product)}
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="w-full flex items-center justify-center gap-2"
+                            onClick={handleImageUpload}
+                            disabled={isUploading}
+                          >
+                            {isUploading ? (
+                              "Uploading..."
+                            ) : (
+                              <>
+                                <Upload size={16} />
+                                Upload Image
+                              </>
+                            )}
+                          </Button>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Upload multiple images of your product. First image will be used as the main thumbnail.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => {
+                        setIsAddModalOpen(false);
+                        setProductImages([]);
+                        setNewProduct({
+                          name: "",
+                          description: "",
+                          price: "",
+                          category: "",
+                          stock: "",
+                        });
+                      }}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleAddProduct}>Add Product</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <CardDescription>
+                Manage your product listings and inventory.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="relative w-full md:w-64">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search products..."
+                    className="pl-8"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Select
+                    value={categoryFilter}
+                    onValueChange={setCategoryFilter}
+                  >
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Filter by category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="skin care">Skin Care</SelectItem>
+                      <SelectItem value="hair">Hair</SelectItem>
+                      <SelectItem value="spa">Spa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[80px]">Image</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead className="hidden md:table-cell">Category</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead className="hidden md:table-cell">Stock</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProducts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                          No products found.
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Edit Product Modal */}
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Product</DialogTitle>
-            <DialogDescription>
-              Update product information.
-            </DialogDescription>
-          </DialogHeader>
-          {currentProduct && (
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-name">Product Name</Label>
-                <Input
-                  id="edit-name"
-                  name="name"
-                  value={currentProduct.name}
-                  onChange={(e) =>
-                    setCurrentProduct({ ...currentProduct, name: e.target.value })
-                  }
-                />
+                    ) : (
+                      filteredProducts.map((product) => (
+                        <TableRow key={product.id}>
+                          <TableCell>
+                            <img
+                              src={product.images[0]}
+                              alt={product.name}
+                              className="w-12 h-12 object-cover rounded"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{product.name}</div>
+                              <div className="text-sm text-muted-foreground hidden md:block line-clamp-1">
+                                {product.description}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell capitalize">
+                            {product.category}
+                          </TableCell>
+                          <TableCell>${product.price.toFixed(2)}</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {product.stock}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button size="sm" variant="outline">
+                                <Edit size={16} className="mr-1" />
+                                <span className="hidden sm:inline">Edit</span>
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="destructive"
+                                onClick={() => handleDeleteProduct(product.id)}
+                              >
+                                <Trash2 size={16} className="mr-1" />
+                                <span className="hidden sm:inline">Delete</span>
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  name="description"
-                  value={currentProduct.description || ""}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={3}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-price">Price ($)</Label>
-                  <Input
-                    id="edit-price"
-                    name="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={currentProduct.price}
-                    onChange={(e) =>
-                      setCurrentProduct({
-                        ...currentProduct,
-                        price: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-stockQuantity">Stock Quantity</Label>
-                  <Input
-                    id="edit-stockQuantity"
-                    name="stockQuantity"
-                    type="number"
-                    min="0"
-                    value={currentProduct.stockQuantity || 0}
-                    onChange={(e) =>
-                      setCurrentProduct({
-                        ...currentProduct,
-                        stockQuantity: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-category">Category</Label>
-                <Select
-                  value={currentProduct.category}
-                  onValueChange={(value) =>
-                    setCurrentProduct({ ...currentProduct, category: value })
-                  }
-                >
-                  <SelectTrigger id="edit-category">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-imageUrl">Image URL</Label>
-                <Input
-                  id="edit-imageUrl"
-                  name="imageUrl"
-                  value={currentProduct.imageUrl}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      imageUrl: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEditProduct}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Modal */}
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this product? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteProduct}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="inventory">
+          <Card>
+            <CardHeader>
+              <CardTitle>Inventory Management</CardTitle>
+              <CardDescription>
+                Monitor and update your product inventory levels.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                Inventory management features will be implemented here. This will include stock
+                level tracking, low stock alerts, and inventory history.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </AdminLayout>
   );
 };

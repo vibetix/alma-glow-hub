@@ -32,6 +32,11 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Set sidebar to open by default
+  useEffect(() => {
+    setIsSidebarOpen(true);
+  }, []);
+
   const sidebarLinks = [
     { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { path: "/admin/users", label: "Users", icon: Users },
@@ -109,11 +114,11 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
       )}
 
       <div className="flex flex-1">
-        {/* Sidebar for desktop */}
+        {/* Sidebar for desktop - fixed position during scroll */}
         <aside
-          className={`bg-white fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ease-in-out ${
+          className={`bg-white fixed inset-y-0 left-0 z-30 overflow-y-auto transition-transform duration-300 ease-in-out ${
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } md:relative md:translate-x-0 shadow-md md:shadow-none md:w-64 md:flex md:flex-col`}
+          } md:translate-x-0 shadow-md md:w-64 md:flex md:flex-col`}
         >
           <div className="p-6 border-b">
             <Link to="/" className="flex items-center justify-center">
@@ -156,8 +161,8 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
           </div>
         </aside>
 
-        {/* Main content */}
-        <main className={`flex-1 px-6 py-8 ${isSidebarOpen ? 'md:ml-64' : ''}`}>
+        {/* Main content - adjust margin to account for fixed sidebar */}
+        <main className={`flex-1 px-6 py-8 md:ml-64`}>
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-8">
               <h1 className="text-2xl font-bold text-gray-900">{title}</h1>

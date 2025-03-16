@@ -174,7 +174,7 @@ const Appointments = () => {
                       <span className="hidden md:inline">New Appointment</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="sm:max-w-[425px] max-w-[95vw] w-full max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Add New Appointment</DialogTitle>
                       <DialogDescription>
@@ -255,7 +255,7 @@ const Appointments = () => {
                               date: date || new Date(),
                             }))
                           }
-                          className="pointer-events-auto"
+                          className="pointer-events-auto mx-auto"
                         />
                       </div>
                       <div className="grid gap-2">
@@ -315,7 +315,7 @@ const Appointments = () => {
                     value={statusFilter}
                     onValueChange={setStatusFilter}
                   >
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -330,7 +330,7 @@ const Appointments = () => {
                     value={categoryFilter}
                     onValueChange={setCategoryFilter}
                   >
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Filter by category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -342,7 +342,7 @@ const Appointments = () => {
                   </Select>
                 </div>
               </div>
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
