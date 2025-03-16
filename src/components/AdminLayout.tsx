@@ -12,7 +12,10 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  CreditCard,
+  Package,
+  UserCog
 } from "lucide-react";
 
 type AdminLayoutProps = {
@@ -42,6 +45,9 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     { path: "/admin/users", label: "Users", icon: Users },
     { path: "/admin/appointments", label: "Appointments", icon: Calendar },
     { path: "/admin/products", label: "Products", icon: ShoppingBag },
+    { path: "/admin/orders", label: "Orders", icon: Package },
+    { path: "/admin/payments", label: "Payments", icon: CreditCard },
+    { path: "/admin/staff", label: "Staff", icon: UserCog },
     { path: "/admin/settings", label: "Settings", icon: Settings },
   ];
 

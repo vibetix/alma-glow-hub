@@ -25,6 +25,9 @@ import Users from "./pages/admin/Users";
 import Appointments from "./pages/admin/Appointments";
 import Products from "./pages/admin/Products";
 import Settings from "./pages/admin/Settings";
+import Orders from "./pages/admin/Orders";
+import Payments from "./pages/admin/Payments";
+import Staff from "./pages/admin/Staff";
 
 // Auth components
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -83,6 +86,30 @@ const App = () => (
               element={
                 <ProtectedRoute adminOnly>
                   <Products />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/orders" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <Orders />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/payments" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <Payments />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/staff" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <Staff />
                 </ProtectedRoute>
               } 
             />

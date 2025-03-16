@@ -109,6 +109,8 @@ const Appointments = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [newAppointment, setNewAppointment] = useState({
     customer: "",
     email: "",
@@ -157,6 +159,11 @@ const Appointments = () => {
   const handleStatusChange = (id: number, newStatus: string) => {
     // In a real app, we would update the database
     console.log(`Changing appointment ${id} status to ${newStatus}`);
+  };
+  
+  const openDetailsModal = (appointment: any) => {
+    setSelectedAppointment(appointment);
+    setIsDetailsModalOpen(true);
   };
 
   return (
@@ -286,7 +293,7 @@ const Appointments = () => {
                         </Select>
                       </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="sm:justify-end">
                       <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
                         Cancel
                       </Button>
@@ -402,7 +409,11 @@ const Appointments = () => {
                             </Select>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => openDetailsModal(appointment)}
+                            >
                               Details
                             </Button>
                           </TableCell>
@@ -465,6 +476,51 @@ const Appointments = () => {
           </Card>
         </div>
       </div>
+
+      {/* Appointment Details Modal */}
+      <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
+        <DialogContent className="sm:max-w-[500px] max-w-[95vw]">
+          <DialogHeader>
+            <DialogTitle>Appointment Details</DialogTitle>
+          </DialogHeader>
+          {selectedAppointment && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Customer</h3>
+                  <p className="font-medium">{selectedAppointment.customer}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Date & Time</h3>
+                  <p className="font-medium">{format(selectedAppointment.date, "PPP")}</p>
+                  <p className="text-sm text-muted-foreground">{format(selectedAppointment.date, "h:mm a")}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Service</h3>
+                  <p className="font-medium">{selectedAppointment.service}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{selectedAppointment.category}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+                  <p className="font-medium capitalize">{selectedAppointment.status}</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Contact Information</h3>
+                <p className="text-sm">Email: {selectedAppointment.email}</p>
+                <p className="text-sm">Phone: {selectedAppointment.phone}</p>
+              </div>
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-medium">Notes</h3>
+                <p className="text-sm text-muted-foreground">No additional notes for this appointment.</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDetailsModalOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
