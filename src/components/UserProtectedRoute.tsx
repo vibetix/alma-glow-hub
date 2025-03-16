@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 type UserProtectedRouteProps = {
   children: React.ReactNode;
@@ -38,9 +39,14 @@ export const UserProtectedRoute = ({ children }: UserProtectedRouteProps) => {
     }
   }, [isAuthenticated, isLoading, navigate, user]);
 
-  // Show nothing while checking auth status
+  // Show loading spinner while checking auth status
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-alma-gold" />
+        <span className="ml-2 text-lg">Loading...</span>
+      </div>
+    );
   }
 
   // If authenticated and is a regular user, render children

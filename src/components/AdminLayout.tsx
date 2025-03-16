@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   LayoutDashboard,
   Users,
@@ -15,7 +16,8 @@ import {
   ChevronRight,
   CreditCard,
   Package,
-  UserCog
+  UserCog,
+  Home
 } from "lucide-react";
 
 type AdminLayoutProps = {
@@ -27,7 +29,8 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const isMobile = useIsMobile();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Close mobile menu on location change
@@ -35,10 +38,10 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
-  // Set sidebar to open by default
+  // Update sidebar state when screen size changes
   useEffect(() => {
-    setIsSidebarOpen(true);
-  }, []);
+    setIsSidebarOpen(!isMobile);
+  }, [isMobile]);
 
   const sidebarLinks = [
     { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -63,10 +66,11 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Top navigation for mobile */}
-      <header className="bg-white shadow-sm py-4 px-6 flex items-center justify-between md:hidden">
+      <header className="bg-white shadow-sm py-4 px-4 flex items-center justify-between md:hidden sticky top-0 z-40">
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="text-gray-600"
+          className="text-gray-600 p-2 -ml-2"
+          aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
         >
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -74,57 +78,92 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
           <img
             src="/lovable-uploads/fb6df437-d752-46c4-9f14-60e6145c5695.png"
             alt="Alma Beauty"
-            className="h-10"
+            className="h-8"
           />
         </Link>
         <div className="w-6"></div> {/* Spacer for balance */}
       </header>
 
-      {/* Mobile sidebar */}
+      {/* Mobile sidebar overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-white md:hidden">
-          <div className="flex flex-col h-full pt-20 px-6">
-            <div className="space-y-6">
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar */}
+      <div 
+        className={`fixed inset-y-0 left-0 z-50 w-full max-w-[280px] bg-white transform transition-transform duration-300 ease-in-out md:hidden ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex flex-col h-full">
+          <div className="p-4 border-b flex items-center justify-between">
+            <Link to="/" className="flex items-center">
+              <img
+                src="/lovable-uploads/fb6df437-d752-46c4-9f14-60e6145c5695.png"
+                alt="Alma Beauty"
+                className="h-8"
+              />
+            </Link>
+            <button 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-gray-600 p-2"
+              aria-label="Close menu"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto py-4">
+            <nav className="px-2 space-y-1">
               {sidebarLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`flex items-center space-x-3 p-3 rounded-md ${
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-md ${
                     isActive(link.path)
                       ? "bg-alma-gold text-white"
                       : "hover:bg-gray-100"
                   }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <link.icon size={20} />
                   <span>{link.label}</span>
                 </Link>
               ))}
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={handleLogout}
-              >
-                <LogOut size={20} className="mr-3" />
-                Logout
-              </Button>
-            </div>
+            </nav>
+          </div>
+          
+          <div className="p-4 border-t">
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-red-500 hover:text-red-700 hover:bg-red-50"
+              onClick={handleLogout}
+            >
+              <LogOut size={18} className="mr-3" />
+              Logout
+            </Button>
             
-            <div className="mt-auto pb-8">
-              <Link to="/" className="flex items-center space-x-2 text-alma-gold hover:underline">
-                <span>Back to Website</span>
-                <ChevronRight size={16} />
-              </Link>
-            </div>
+            <Link 
+              to="/" 
+              className="mt-4 flex items-center justify-center text-alma-gold hover:underline px-4 py-2"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <span>Back to Website</span>
+              <ChevronRight size={16} className="ml-1" />
+            </Link>
           </div>
         </div>
-      )}
+      </div>
 
       <div className="flex flex-1">
         {/* Sidebar for desktop - fixed position during scroll */}
         <aside
-          className={`bg-white fixed inset-y-0 left-0 z-30 overflow-y-auto transition-transform duration-300 ease-in-out ${
+          className={`bg-white fixed inset-y-0 left-0 z-40 overflow-y-auto transition-transform duration-300 ease-in-out ${
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } md:translate-x-0 shadow-md md:w-64 md:flex md:flex-col`}
+          } hidden md:flex md:flex-col shadow-md md:w-64`}
         >
           <div className="p-6 border-b">
             <Link to="/" className="flex items-center justify-center">
@@ -168,10 +207,10 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         </aside>
 
         {/* Main content - adjust margin to account for fixed sidebar */}
-        <main className={`flex-1 px-6 py-8 md:ml-64`}>
+        <main className={`flex-1 px-4 md:px-6 py-6 md:py-8 md:ml-64 pt-6 md:pt-8 transition-all duration-300`}>
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-between mb-8">
-              <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">{title}</h1>
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 className="hidden md:flex text-gray-600 hover:text-gray-900"
