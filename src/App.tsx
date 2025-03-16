@@ -29,9 +29,16 @@ import Orders from "./pages/admin/Orders";
 import Payments from "./pages/admin/Payments";
 import Staff from "./pages/admin/Staff";
 
+// User Pages
+import UserDashboard from "./pages/user/Dashboard";
+import UserAppointments from "./pages/user/Appointments";
+import UserOrders from "./pages/user/Orders";
+import UserProfile from "./pages/user/Profile";
+
 // Auth components
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { UserProtectedRoute } from "@/components/UserProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +62,40 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/about" element={<AboutUs />} />
+            
+            {/* User Routes (Protected) */}
+            <Route 
+              path="/user/dashboard" 
+              element={
+                <UserProtectedRoute>
+                  <UserDashboard />
+                </UserProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/user/appointments" 
+              element={
+                <UserProtectedRoute>
+                  <UserAppointments />
+                </UserProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/user/orders" 
+              element={
+                <UserProtectedRoute>
+                  <UserOrders />
+                </UserProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/user/profile" 
+              element={
+                <UserProtectedRoute>
+                  <UserProfile />
+                </UserProtectedRoute>
+              } 
+            />
             
             {/* Admin Routes (Protected) */}
             <Route 

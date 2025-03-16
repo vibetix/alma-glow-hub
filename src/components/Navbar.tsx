@@ -1,10 +1,19 @@
 
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ShoppingCart, User } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, ShoppingCart, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -12,6 +21,8 @@ export const Navbar = () => {
   const [cartItemsCount, setCartItemsCount] = useState(0);
   const location = useLocation();
   const isMobile = useIsMobile();
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -63,6 +74,11 @@ export const Navbar = () => {
     { href: "/booking", label: "Book Now" },
   ];
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <header 
       className={cn(
@@ -112,12 +128,46 @@ export const Navbar = () => {
             )}
           </Link>
           
-          <Link to="/login">
-            <Button variant="ghost" size="sm" className="text-alma-darkGreen hover:text-alma-gold">
-              <User size={20} className="mr-2" /> 
-              Login
-            </Button>
-          </Link>
+          {isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-alma-darkGreen hover:text-alma-gold">
+                  <div className="w-6 h-6 rounded-full bg-alma-gold text-white flex items-center justify-center text-xs font-bold mr-2">
+                    {user?.name.charAt(0)}
+                  </div>
+                  <span className="max-w-[80px] truncate">{user?.name}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {user?.role === 'admin' ? (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin">Admin Dashboard</Link>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link to="/user/dashboard">My Dashboard</Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem asChild>
+                  <Link to={user?.role === 'admin' ? "/admin/settings" : "/user/profile"}>Profile Settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/login">
+              <Button variant="ghost" size="sm" className="text-alma-darkGreen hover:text-alma-gold">
+                <User size={20} className="mr-2" /> 
+                Login
+              </Button>
+            </Link>
+          )}
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -156,10 +206,29 @@ export const Navbar = () => {
               
               <div className="h-5 w-px bg-alma-gray mx-2"></div>
               
-              <Link to="/login" className="flex items-center text-alma-darkGreen">
-                <User size={20} className="mr-2" /> 
-                Login
-              </Link>
+              {isAuthenticated ? (
+                <div className="flex flex-col space-y-3">
+                  <Link
+                    to={user?.role === 'admin' ? "/admin" : "/user/dashboard"}
+                    className="flex items-center text-alma-darkGreen"
+                  >
+                    <User size={20} className="mr-2" /> 
+                    {user?.role === 'admin' ? 'Admin Dashboard' : 'My Dashboard'}
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center text-red-500"
+                  >
+                    <LogOut size={20} className="mr-2" /> 
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <Link to="/login" className="flex items-center text-alma-darkGreen">
+                  <User size={20} className="mr-2" /> 
+                  Login
+                </Link>
+              )}
             </div>
           </div>
         )}

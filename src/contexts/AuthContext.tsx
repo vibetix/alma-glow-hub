@@ -32,10 +32,12 @@ export const useAuth = () => {
   return context;
 };
 
-// Mock admin credentials for demo purposes
+// Mock credentials for demo purposes
 // In a real app, this would be handled by a backend
 const ADMIN_EMAIL = 'admin@alma.com';
 const ADMIN_PASSWORD = 'admin123';
+const USER_EMAIL = 'user@alma.com';
+const USER_PASSWORD = 'user123';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -73,6 +75,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast({
         title: "Login successful",
         description: "Welcome to the admin dashboard!",
+      });
+      return true;
+    } else if (email === USER_EMAIL && password === USER_PASSWORD) {
+      const userData: User = {
+        id: '2',
+        email,
+        name: 'Regular User',
+        role: 'user'
+      };
+      
+      setUser(userData);
+      localStorage.setItem('almaUser', JSON.stringify(userData));
+      setIsLoading(false);
+      toast({
+        title: "Login successful",
+        description: "Welcome to your dashboard!",
       });
       return true;
     }

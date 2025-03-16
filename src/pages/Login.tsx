@@ -42,9 +42,11 @@ const Login = () => {
     try {
       const success = await login(formData.email, formData.password);
       if (success) {
-        // Navigate to the page the user tried to visit or admin dashboard for admin users
+        // Navigate to the page the user tried to visit or dashboard based on role
         if (formData.email === 'admin@alma.com') {
           navigate('/admin');
+        } else if (formData.email === 'user@alma.com') {
+          navigate('/user/dashboard');
         } else {
           navigate(from);
         }
@@ -68,6 +70,7 @@ const Login = () => {
                 </p>
                 <div className="mt-2 text-sm bg-blue-50 text-blue-700 p-2 rounded">
                   <p><strong>Admin Demo:</strong> admin@alma.com / admin123</p>
+                  <p><strong>User Demo:</strong> user@alma.com / user123</p>
                 </div>
               </div>
 
