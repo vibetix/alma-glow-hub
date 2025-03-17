@@ -4,6 +4,7 @@ import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
+import { DashboardSummary } from "@/components/admin/DashboardSummary";
 import {
   LineChart,
   Line,
@@ -87,6 +88,13 @@ const Dashboard = () => {
         <p className="text-gray-500">
           Here's what's happening with your business today.
         </p>
+      </div>
+
+      {/* New summary component */}
+      <DashboardSummary />
+
+      <div className="my-8 border-t pt-8">
+        <h3 className="text-lg font-semibold mb-4">Business Overview</h3>
       </div>
 
       <div className="grid grid-cols-1 gap-6 mb-8 sm:grid-cols-2 lg:grid-cols-4">
