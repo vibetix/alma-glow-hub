@@ -8,6 +8,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -37,8 +38,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, X, Upload, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, X, Upload, Edit, Trash2, AlertCircle, Archive, ShoppingBag, ArrowUpDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Mock product data
 const MOCK_PRODUCTS = [
@@ -103,12 +114,74 @@ const MOCK_PRODUCTS = [
   },
 ];
 
+// New inventory activity log data
+const INVENTORY_ACTIVITIES = [
+  {
+    id: 1,
+    productId: 1,
+    productName: "Revitalizing Face Serum",
+    type: "restock",
+    quantity: 10,
+    date: new Date(2023, 6, 10),
+    user: "Admin User"
+  },
+  {
+    id: 2,
+    productId: 2,
+    productName: "Nourishing Hair Mask",
+    type: "sale",
+    quantity: -2,
+    date: new Date(2023, 6, 12),
+    user: "System"
+  },
+  {
+    id: 3,
+    productId: 3,
+    productName: "Essential Oil Set",
+    type: "restock",
+    quantity: 5,
+    date: new Date(2023, 6, 14),
+    user: "Admin User"
+  },
+  {
+    id: 4,
+    productId: 1,
+    productName: "Revitalizing Face Serum",
+    type: "adjustment",
+    quantity: -1,
+    date: new Date(2023, 6, 15),
+    user: "Admin User"
+  },
+  {
+    id: 5,
+    productId: 4,
+    productName: "Relaxing Bath Salts",
+    type: "sale",
+    quantity: -3,
+    date: new Date(2023, 6, 18),
+    user: "System"
+  }
+];
+
+// Low stock threshold
+const LOW_STOCK_THRESHOLD = 20;
+
 const Products = () => {
   const [products, setProducts] = useState(MOCK_PRODUCTS);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newProduct, setNewProduct] = useState({
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<number | null>(null);
+  const [inventoryActivities] = useState(INVENTORY_ACTIVITIES);
+  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
+  const [restockQuantity, setRestockQuantity] = useState("");
+  const [restockProduct, setRestockProduct] = useState<any>(null);
+
+  // For new/edit product
+  const [productForm, setProductForm] = useState({
     name: "",
     description: "",
     price: "",
@@ -130,15 +203,31 @@ const Products = () => {
     return matchesSearch && matchesCategory;
   });
 
+  // Get low stock products
+  const lowStockProducts = products.filter(
+    (product) => product.stock <= LOW_STOCK_THRESHOLD
+  );
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setNewProduct((prev) => ({ ...prev, [name]: value }));
+    setProductForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const resetForm = () => {
+    setProductForm({
+      name: "",
+      description: "",
+      price: "",
+      category: "",
+      stock: "",
+    });
+    setProductImages([]);
   };
 
   const handleAddProduct = () => {
-    if (!newProduct.name || !newProduct.price || !newProduct.category || !newProduct.stock) {
+    if (!productForm.name || !productForm.price || !productForm.category || !productForm.stock) {
       toast({
         title: "Missing information",
         description: "Please fill in all required fields.",
@@ -159,11 +248,11 @@ const Products = () => {
     // In a real app, we would save the product to the database
     const newProductData = {
       id: products.length + 1,
-      name: newProduct.name,
-      description: newProduct.description,
-      price: parseFloat(newProduct.price),
-      category: newProduct.category,
-      stock: parseInt(newProduct.stock),
+      name: productForm.name,
+      description: productForm.description,
+      price: parseFloat(productForm.price),
+      category: productForm.category,
+      stock: parseInt(productForm.stock),
       images: productImages,
     };
 
@@ -171,14 +260,7 @@ const Products = () => {
     setIsAddModalOpen(false);
     
     // Reset form
-    setNewProduct({
-      name: "",
-      description: "",
-      price: "",
-      category: "",
-      stock: "",
-    });
-    setProductImages([]);
+    resetForm();
     
     toast({
       title: "Product added",
@@ -186,12 +268,82 @@ const Products = () => {
     });
   };
 
+  const handleEditProduct = () => {
+    if (!productForm.name || !productForm.price || !productForm.category || !productForm.stock) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (productImages.length === 0) {
+      toast({
+        title: "No images",
+        description: "Please upload at least one product image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedProduct) return;
+
+    // Update the product in the state
+    const updatedProducts = products.map(product => {
+      if (product.id === selectedProduct.id) {
+        return {
+          ...product,
+          name: productForm.name,
+          description: productForm.description,
+          price: parseFloat(productForm.price),
+          category: productForm.category,
+          stock: parseInt(productForm.stock),
+          images: productImages,
+        };
+      }
+      return product;
+    });
+
+    setProducts(updatedProducts);
+    setIsEditModalOpen(false);
+    
+    // Reset form
+    resetForm();
+    
+    toast({
+      title: "Product updated",
+      description: "The product has been updated successfully.",
+    });
+  };
+
+  const openEditModal = (product: any) => {
+    setSelectedProduct(product);
+    setProductForm({
+      name: product.name,
+      description: product.description,
+      price: product.price.toString(),
+      category: product.category,
+      stock: product.stock.toString(),
+    });
+    setProductImages([...product.images]);
+    setIsEditModalOpen(true);
+  };
+
   const handleDeleteProduct = (id: number) => {
     setProducts(products.filter((product) => product.id !== id));
+    setProductToDelete(null);
+    setIsConfirmDeleteOpen(false);
+    
     toast({
       title: "Product deleted",
       description: "The product has been removed.",
     });
+  };
+
+  const confirmDelete = (id: number) => {
+    setProductToDelete(id);
+    setIsConfirmDeleteOpen(true);
   };
 
   // Simulate image upload
@@ -212,6 +364,43 @@ const Products = () => {
   
   const removeImage = (index: number) => {
     setProductImages(productImages.filter((_, i) => i !== index));
+  };
+
+  // Handle restocking products
+  const openRestockModal = (product: any) => {
+    setRestockProduct(product);
+    setRestockQuantity("");
+    setIsRestockModalOpen(true);
+  };
+
+  const handleRestock = () => {
+    if (!restockProduct || !restockQuantity || parseInt(restockQuantity) <= 0) {
+      toast({
+        title: "Invalid quantity",
+        description: "Please enter a valid quantity greater than zero.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Update the product stock in state
+    const updatedProducts = products.map(product => {
+      if (product.id === restockProduct.id) {
+        return {
+          ...product,
+          stock: product.stock + parseInt(restockQuantity)
+        };
+      }
+      return product;
+    });
+
+    setProducts(updatedProducts);
+    setIsRestockModalOpen(false);
+    
+    toast({
+      title: "Inventory updated",
+      description: `Added ${restockQuantity} units to ${restockProduct.name}.`,
+    });
   };
 
   return (
@@ -247,7 +436,7 @@ const Products = () => {
                         <Input
                           id="name"
                           name="name"
-                          value={newProduct.name}
+                          value={productForm.name}
                           onChange={handleInputChange}
                           required
                         />
@@ -258,7 +447,7 @@ const Products = () => {
                           id="description"
                           name="description"
                           rows={4}
-                          value={newProduct.description}
+                          value={productForm.description}
                           onChange={handleInputChange}
                         />
                       </div>
@@ -271,7 +460,7 @@ const Products = () => {
                             type="number"
                             min="0"
                             step="0.01"
-                            value={newProduct.price}
+                            value={productForm.price}
                             onChange={handleInputChange}
                             required
                           />
@@ -283,7 +472,7 @@ const Products = () => {
                             name="stock"
                             type="number"
                             min="0"
-                            value={newProduct.stock}
+                            value={productForm.stock}
                             onChange={handleInputChange}
                             required
                           />
@@ -292,9 +481,9 @@ const Products = () => {
                       <div className="grid gap-2">
                         <Label htmlFor="category">Category*</Label>
                         <Select
-                          value={newProduct.category}
+                          value={productForm.category}
                           onValueChange={(value) =>
-                            setNewProduct((prev) => ({
+                            setProductForm((prev) => ({
                               ...prev,
                               category: value,
                             }))
@@ -359,14 +548,7 @@ const Products = () => {
                     <DialogFooter>
                       <Button variant="outline" onClick={() => {
                         setIsAddModalOpen(false);
-                        setProductImages([]);
-                        setNewProduct({
-                          name: "",
-                          description: "",
-                          price: "",
-                          category: "",
-                          stock: "",
-                        });
+                        resetForm();
                       }}>
                         Cancel
                       </Button>
@@ -449,18 +631,29 @@ const Products = () => {
                           </TableCell>
                           <TableCell>${product.price.toFixed(2)}</TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {product.stock}
+                            <div className={`flex items-center ${
+                              product.stock <= LOW_STOCK_THRESHOLD ? "text-amber-500" : ""
+                            }`}>
+                              {product.stock}
+                              {product.stock <= LOW_STOCK_THRESHOLD && (
+                                <AlertCircle size={16} className="ml-2" />
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
-                              <Button size="sm" variant="outline">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => openEditModal(product)}
+                              >
                                 <Edit size={16} className="mr-1" />
                                 <span className="hidden sm:inline">Edit</span>
                               </Button>
                               <Button 
                                 size="sm" 
                                 variant="destructive"
-                                onClick={() => handleDeleteProduct(product.id)}
+                                onClick={() => confirmDelete(product.id)}
                               >
                                 <Trash2 size={16} className="mr-1" />
                                 <span className="hidden sm:inline">Delete</span>
@@ -477,7 +670,116 @@ const Products = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="inventory">
+        <TabsContent value="inventory" className="space-y-6">
+          {/* Low stock alert card */}
+          <Card className={`${lowStockProducts.length > 0 ? "border-amber-300" : ""}`}>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle size={18} className="text-amber-500" />
+                Low Stock Alert
+              </CardTitle>
+              <CardDescription>
+                Products that need to be restocked soon (below {LOW_STOCK_THRESHOLD} units).
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {lowStockProducts.length === 0 ? (
+                <p className="text-muted-foreground">
+                  No products are running low on stock.
+                </p>
+              ) : (
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Current Stock</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {lowStockProducts.map((product) => (
+                        <TableRow key={product.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={product.images[0]}
+                                alt={product.name}
+                                className="w-10 h-10 object-cover rounded"
+                              />
+                              <span className="font-medium">{product.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="capitalize">{product.category}</TableCell>
+                          <TableCell className="text-amber-500 font-medium">{product.stock}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              onClick={() => openRestockModal(product)}
+                            >
+                              Restock
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Inventory summary card */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Products
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{products.length}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Across {new Set(products.map(p => p.category)).size} categories
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Stock
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {products.reduce((total, product) => total + product.stock, 0)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total units across all products
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Low Stock Items
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-500">
+                  {lowStockProducts.length}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Products with less than {LOW_STOCK_THRESHOLD} units
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Inventory management card */}
           <Card>
             <CardHeader>
               <CardTitle>Inventory Management</CardTitle>
@@ -486,14 +788,309 @@ const Products = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">
-                Inventory management features will be implemented here. This will include stock
-                level tracking, low stock alerts, and inventory history.
-              </p>
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Current Stock</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {products.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={product.images[0]}
+                              alt={product.name}
+                              className="w-10 h-10 object-cover rounded"
+                            />
+                            <span className="font-medium">{product.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className={product.stock <= LOW_STOCK_THRESHOLD ? "text-amber-500 font-medium" : ""}>
+                          {product.stock}
+                        </TableCell>
+                        <TableCell className="capitalize">{product.category}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openRestockModal(product)}
+                            className="mr-2"
+                          >
+                            Restock
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openEditModal(product)}
+                          >
+                            Edit
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Inventory activity card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Inventory Activity Log</CardTitle>
+              <CardDescription>
+                Recent inventory changes and activities.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Activity</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Updated By</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {inventoryActivities.map((activity) => (
+                      <TableRow key={activity.id}>
+                        <TableCell>{format(activity.date, "MMM d, yyyy")}</TableCell>
+                        <TableCell>{activity.productName}</TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            activity.type === "restock" 
+                              ? "bg-green-100 text-green-800" 
+                              : activity.type === "sale"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}>
+                            {activity.type === "restock" && <ArrowUpDown className="mr-1 h-3 w-3" />}
+                            {activity.type === "sale" && <ShoppingBag className="mr-1 h-3 w-3" />}
+                            {activity.type === "adjustment" && <Archive className="mr-1 h-3 w-3" />}
+                            {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
+                          </span>
+                        </TableCell>
+                        <TableCell className={`font-medium ${
+                          activity.quantity > 0 
+                            ? "text-green-600" 
+                            : "text-red-600"
+                        }`}>
+                          {activity.quantity > 0 ? `+${activity.quantity}` : activity.quantity}
+                        </TableCell>
+                        <TableCell>{activity.user}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Product Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-[600px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Product</DialogTitle>
+            <DialogDescription>
+              Update the product information and inventory details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Product Name*</Label>
+              <Input
+                id="edit-name"
+                name="name"
+                value={productForm.name}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                name="description"
+                rows={4}
+                value={productForm.description}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-price">Price ($)*</Label>
+                <Input
+                  id="edit-price"
+                  name="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={productForm.price}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-stock">Stock Quantity*</Label>
+                <Input
+                  id="edit-stock"
+                  name="stock"
+                  type="number"
+                  min="0"
+                  value={productForm.stock}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-category">Category*</Label>
+              <Select
+                value={productForm.category}
+                onValueChange={(value) =>
+                  setProductForm((prev) => ({
+                    ...prev,
+                    category: value,
+                  }))
+                }
+                required
+              >
+                <SelectTrigger id="edit-category">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="skin care">Skin Care</SelectItem>
+                  <SelectItem value="hair">Hair</SelectItem>
+                  <SelectItem value="spa">Spa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label>Images*</Label>
+              <div className="border rounded-md p-3">
+                <div className="flex flex-wrap gap-3 mb-3">
+                  {productImages.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img 
+                        src={image} 
+                        alt="Product" 
+                        className="w-20 h-20 object-cover rounded border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full flex items-center justify-center gap-2"
+                  onClick={handleImageUpload}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    "Uploading..."
+                  ) : (
+                    <>
+                      <Upload size={16} />
+                      Upload Image
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Upload multiple images of your product. First image will be used as the main thumbnail.
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsEditModalOpen(false);
+              resetForm();
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditProduct}>Update Product</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Restock Modal */}
+      <Dialog open={isRestockModalOpen} onOpenChange={setIsRestockModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Restock Product</DialogTitle>
+            <DialogDescription>
+              {restockProduct && `Add inventory to ${restockProduct.name}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="restock-quantity">Quantity to Add</Label>
+              <Input
+                id="restock-quantity"
+                type="number"
+                min="1"
+                value={restockQuantity}
+                onChange={(e) => setRestockQuantity(e.target.value)}
+                placeholder="Enter quantity"
+              />
+            </div>
+            {restockProduct && (
+              <div className="text-sm">
+                <p>Current stock: <span className="font-medium">{restockProduct.stock}</span></p>
+                <p className="mt-1">New stock will be: <span className="font-medium">{restockProduct.stock + (parseInt(restockQuantity) || 0)}</span></p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRestockModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRestock}>Restock</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Alert */}
+      <AlertDialog open={isConfirmDeleteOpen} onOpenChange={setIsConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the product
+              and remove it from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setProductToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-500 hover:bg-red-600"
+              onClick={() => productToDelete && handleDeleteProduct(productToDelete)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };

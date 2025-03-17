@@ -177,6 +177,70 @@ const Payments = () => {
   return (
     <AdminLayout title="Payment Management">
       <div className="space-y-6">
+        {/* Payment analytics cards - moved to the top */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Revenue
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(
+                  PAYMENTS
+                    .filter(p => p.status === "completed")
+                    .reduce((sum, payment) => sum + payment.amount, 0)
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                From {PAYMENTS.filter(p => p.status === "completed").length} completed payments
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                Pending Payments
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(
+                  PAYMENTS
+                    .filter(p => p.status === "pending")
+                    .reduce((sum, payment) => sum + payment.amount, 0)
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                From {PAYMENTS.filter(p => p.status === "pending").length} pending payments
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                Failed Payments
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(
+                  PAYMENTS
+                    .filter(p => p.status === "failed")
+                    .reduce((sum, payment) => sum + payment.amount, 0)
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                From {PAYMENTS.filter(p => p.status === "failed").length} failed payments
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Payments table - now after the analytics cards */}
         <Card>
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -287,80 +351,17 @@ const Payments = () => {
             </div>
           </CardContent>
         </Card>
-
-        {/* Payment analytics cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Revenue
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(
-                  PAYMENTS
-                    .filter(p => p.status === "completed")
-                    .reduce((sum, payment) => sum + payment.amount, 0)
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                From {PAYMENTS.filter(p => p.status === "completed").length} completed payments
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                Pending Payments
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(
-                  PAYMENTS
-                    .filter(p => p.status === "pending")
-                    .reduce((sum, payment) => sum + payment.amount, 0)
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                From {PAYMENTS.filter(p => p.status === "pending").length} pending payments
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                Failed Payments
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(
-                  PAYMENTS
-                    .filter(p => p.status === "failed")
-                    .reduce((sum, payment) => sum + payment.amount, 0)
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                From {PAYMENTS.filter(p => p.status === "failed").length} failed payments
-              </p>
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       {/* Payment Details Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
-        <DialogContent className="sm:max-w-[500px] max-w-[95vw]">
+        <DialogContent className="sm:max-w-[500px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Payment Details</DialogTitle>
           </DialogHeader>
           {selectedPayment && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Payment ID</h3>
                   <p className="font-medium">{selectedPayment.id}</p>

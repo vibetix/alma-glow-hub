@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ import {
   Package
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/hooks/use-toast";
 
 // Mock data for orders
 const ORDERS = [
@@ -194,6 +196,7 @@ const formatCurrency = (amount: number) => {
 };
 
 const Orders = () => {
+  const [orders, setOrders] = useState(ORDERS);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -201,7 +204,7 @@ const Orders = () => {
   const [activeTab, setActiveTab] = useState("all");
   
   // Filter orders based on search and status
-  const filteredOrders = ORDERS.filter((order) => {
+  const filteredOrders = orders.filter((order) => {
     const matchesSearch =
       order.id.toLowerCase().includes(search.toLowerCase()) ||
       order.customer.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -226,8 +229,25 @@ const Orders = () => {
   };
 
   const updateOrderStatus = (orderId: string, newStatus: string) => {
-    // In a real app, this would update the database
-    console.log(`Updating order ${orderId} status to ${newStatus}`);
+    // Update order status in the state
+    const updatedOrders = orders.map(order => {
+      if (order.id === orderId) {
+        return { ...order, status: newStatus };
+      }
+      return order;
+    });
+    
+    setOrders(updatedOrders);
+    
+    // Also update the selected order if it's currently being viewed
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder({ ...selectedOrder, status: newStatus });
+    }
+    
+    toast({
+      title: "Order updated",
+      description: `Order ${orderId} status changed to ${newStatus}`,
+    });
   };
 
   return (
@@ -732,7 +752,7 @@ const Orders = () => {
 
       {/* Order Details Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-w-[95vw]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Order Details</DialogTitle>
             <DialogDescription>
@@ -740,8 +760,8 @@ const Orders = () => {
             </DialogDescription>
           </DialogHeader>
           {selectedOrder && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-6 max-w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Customer</h3>
                   <p className="font-medium">{selectedOrder.customer.name}</p>
@@ -793,7 +813,7 @@ const Orders = () => {
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Shipping Address</h3>
                 <div className="bg-gray-50 p-3 rounded-md">
                   <p className="font-medium">{selectedOrder.shippingAddress.name}</p>
-                  <p>{selectedOrder.shippingAddress.address}</p>
+                  <p className="break-words">{selectedOrder.shippingAddress.address}</p>
                   <p>
                     {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.postalCode}
                   </p>
@@ -803,7 +823,7 @@ const Orders = () => {
               
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Order Items</h3>
-                <div className="rounded-md border overflow-hidden">
+                <div className="rounded-md border overflow-hidden overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -816,7 +836,7 @@ const Orders = () => {
                     <TableBody>
                       {selectedOrder.items.map((item: any) => (
                         <TableRow key={item.id}>
-                          <TableCell>{item.name}</TableCell>
+                          <TableCell className="max-w-[150px] truncate">{item.name}</TableCell>
                           <TableCell className="text-right">{item.quantity}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.price * item.quantity)}</TableCell>
@@ -832,8 +852,41 @@ const Orders = () => {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDetailsModalOpen(false)}>Close</Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2 mt-6">
+            {selectedOrder && selectedOrder.status === "pending" && (
+              <Button 
+                variant="default" 
+                className="w-full sm:w-auto"
+                onClick={() => updateOrderStatus(selectedOrder.id, "shipped")}
+              >
+                Mark as Shipped
+              </Button>
+            )}
+            {selectedOrder && selectedOrder.status === "shipped" && (
+              <Button 
+                variant="default" 
+                className="w-full sm:w-auto"
+                onClick={() => updateOrderStatus(selectedOrder.id, "delivered")}
+              >
+                Mark as Delivered
+              </Button>
+            )}
+            {selectedOrder && selectedOrder.status !== "cancelled" && (
+              <Button 
+                variant="destructive" 
+                className="w-full sm:w-auto"
+                onClick={() => updateOrderStatus(selectedOrder.id, "cancelled")}
+              >
+                Cancel Order
+              </Button>
+            )}
+            <Button 
+              variant="outline" 
+              className="w-full sm:w-auto"
+              onClick={() => setIsDetailsModalOpen(false)}
+            >
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
