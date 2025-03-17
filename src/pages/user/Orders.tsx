@@ -5,6 +5,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, Package, Truck, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from "@/components/ui/dialog";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
 
 // Mock order data
 const mockOrders = [
@@ -67,7 +83,7 @@ const OrderStatusIcon = ({ status }: { status: string }) => {
   }
 };
 
-const OrderCard = ({ order }: { order: any }) => {
+const OrderCard = ({ order, onViewDetails }: { order: any; onViewDetails: (orderId: string) => void }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -129,7 +145,11 @@ const OrderCard = ({ order }: { order: any }) => {
       <CardFooter className="flex justify-between border-t pt-4">
         <div className="font-medium">Total: ${order.total.toFixed(2)}</div>
         <div className="flex space-x-2">
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => onViewDetails(order.id)}
+          >
             Order Details
           </Button>
           {order.status === "delivered" && (
@@ -144,6 +164,9 @@ const OrderCard = ({ order }: { order: any }) => {
 };
 
 const Orders = () => {
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  
   const activeOrders = mockOrders.filter(order => 
     ["processing", "shipped"].includes(order.status)
   );
@@ -155,6 +178,12 @@ const Orders = () => {
   const cancelledOrders = mockOrders.filter(order => 
     order.status === "cancelled"
   );
+
+  const handleViewDetails = (orderId: string) => {
+    const order = mockOrders.find(o => o.id === orderId);
+    setSelectedOrder(order);
+    setIsDetailsDialogOpen(true);
+  };
 
   return (
     <UserLayout title="My Orders">
@@ -181,7 +210,11 @@ const Orders = () => {
             </div>
           ) : (
             activeOrders.map(order => (
-              <OrderCard key={order.id} order={order} />
+              <OrderCard 
+                key={order.id} 
+                order={order}
+                onViewDetails={handleViewDetails}
+              />
             ))
           )}
         </TabsContent>
@@ -195,7 +228,11 @@ const Orders = () => {
             </div>
           ) : (
             completedOrders.map(order => (
-              <OrderCard key={order.id} order={order} />
+              <OrderCard 
+                key={order.id} 
+                order={order}
+                onViewDetails={handleViewDetails}
+              />
             ))
           )}
         </TabsContent>
@@ -209,11 +246,101 @@ const Orders = () => {
             </div>
           ) : (
             cancelledOrders.map(order => (
-              <OrderCard key={order.id} order={order} />
+              <OrderCard 
+                key={order.id} 
+                order={order}
+                onViewDetails={handleViewDetails}
+              />
             ))
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Order Details Dialog */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Order Details</DialogTitle>
+            <DialogDescription>
+              {selectedOrder && `Order ID: ${selectedOrder.id}`}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedOrder && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Order Date</h3>
+                  <p className="font-medium">{selectedOrder.date}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+                  <div className="flex items-center">
+                    <OrderStatusIcon status={selectedOrder.status} />
+                    <span className="ml-2 capitalize font-medium">{selectedOrder.status}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {selectedOrder.tracking && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Tracking Number</h3>
+                  <div className="flex items-center mt-1">
+                    <Truck className="h-4 w-4 mr-2 text-gray-500" />
+                    <span className="font-medium">{selectedOrder.tracking}</span>
+                  </div>
+                </div>
+              )}
+              
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Order Items</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedOrder.items.map((item: any) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.name}</TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-right font-medium">Total</TableCell>
+                      <TableCell className="text-right font-bold">${selectedOrder.total.toFixed(2)}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Shipping Information</h3>
+                <div className="bg-gray-50 p-4 rounded-md">
+                  <p><strong>Address:</strong> 123 Main St, Apt 4B</p>
+                  <p><strong>City:</strong> Los Angeles</p>
+                  <p><strong>State/Province:</strong> California</p>
+                  <p><strong>ZIP/Postal Code:</strong> 90210</p>
+                  <p><strong>Country:</strong> United States</p>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>Close</Button>
+            {selectedOrder && selectedOrder.status === "delivered" && (
+              <Button className="bg-alma-gold hover:bg-alma-gold/90">
+                Write Review
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </UserLayout>
   );
 };

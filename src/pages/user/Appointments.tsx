@@ -6,6 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "react-router-dom";
 import { Calendar, Clock, MapPin, X } from "lucide-react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
 
 // Mock appointment data
 const mockAppointments = [
@@ -55,7 +64,7 @@ const mockAppointments = [
   },
 ];
 
-const AppointmentCard = ({ appointment }: { appointment: any }) => {
+const AppointmentCard = ({ appointment, onCancel, onReschedule }: { appointment: any; onCancel: (id: number) => void; onReschedule: (id: number) => void }) => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -103,10 +112,19 @@ const AppointmentCard = ({ appointment }: { appointment: any }) => {
           <div className="flex gap-2">
             {!appointment.pastAppointment && appointment.status !== "cancelled" && (
               <>
-                <Button variant="outline" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => onCancel(appointment.id)}
+                >
                   <X className="mr-1 h-4 w-4" /> Cancel
                 </Button>
-                <Button size="sm" className="bg-alma-gold hover:bg-alma-gold/90">
+                <Button 
+                  size="sm" 
+                  className="bg-alma-gold hover:bg-alma-gold/90"
+                  onClick={() => onReschedule(appointment.id)}
+                >
                   Reschedule
                 </Button>
               </>
@@ -125,9 +143,43 @@ const AppointmentCard = ({ appointment }: { appointment: any }) => {
 
 const Appointments = () => {
   const [activeTab, setActiveTab] = useState("upcoming");
+  const [appointmentsData, setAppointmentsData] = useState(mockAppointments);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   
-  const upcomingAppointments = mockAppointments.filter(a => !a.pastAppointment);
-  const pastAppointments = mockAppointments.filter(a => a.pastAppointment);
+  const upcomingAppointments = appointmentsData.filter(a => !a.pastAppointment);
+  const pastAppointments = appointmentsData.filter(a => a.pastAppointment);
+
+  const handleCancel = (id: number) => {
+    setSelectedAppointment(appointmentsData.find(a => a.id === id));
+    setIsCancelDialogOpen(true);
+  };
+
+  const handleReschedule = (id: number) => {
+    setSelectedAppointment(appointmentsData.find(a => a.id === id));
+    setIsRescheduleDialogOpen(true);
+  };
+
+  const confirmCancel = () => {
+    setAppointmentsData(appointmentsData.map(a => 
+      a.id === selectedAppointment.id ? { ...a, status: "cancelled" } : a
+    ));
+    setIsCancelDialogOpen(false);
+    toast({
+      title: "Appointment Cancelled",
+      description: `Your ${selectedAppointment.service} appointment has been cancelled.`,
+    });
+  };
+
+  const confirmReschedule = () => {
+    // In a real app, this would open a date/time picker and update the appointment
+    setIsRescheduleDialogOpen(false);
+    toast({
+      title: "Appointment Rescheduled",
+      description: "Your appointment has been rescheduled. Check your email for details.",
+    });
+  };
 
   return (
     <UserLayout title="My Appointments">
@@ -158,7 +210,12 @@ const Appointments = () => {
             </div>
           ) : (
             upcomingAppointments.map(appointment => (
-              <AppointmentCard key={appointment.id} appointment={appointment} />
+              <AppointmentCard 
+                key={appointment.id} 
+                appointment={appointment} 
+                onCancel={handleCancel}
+                onReschedule={handleReschedule}
+              />
             ))
           )}
         </TabsContent>
@@ -172,11 +229,74 @@ const Appointments = () => {
             </div>
           ) : (
             pastAppointments.map(appointment => (
-              <AppointmentCard key={appointment.id} appointment={appointment} />
+              <AppointmentCard 
+                key={appointment.id} 
+                appointment={appointment} 
+                onCancel={handleCancel}
+                onReschedule={handleReschedule}
+              />
             ))
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Cancel Appointment Dialog */}
+      <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Cancel Appointment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this appointment? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {selectedAppointment && (
+              <div className="space-y-2">
+                <p><strong>Service:</strong> {selectedAppointment.service}</p>
+                <p><strong>Date:</strong> {selectedAppointment.date}</p>
+                <p><strong>Time:</strong> {selectedAppointment.time}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
+              Keep Appointment
+            </Button>
+            <Button variant="destructive" onClick={confirmCancel}>
+              Yes, Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Appointment Dialog */}
+      <Dialog open={isRescheduleDialogOpen} onOpenChange={setIsRescheduleDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Reschedule Appointment</DialogTitle>
+            <DialogDescription>
+              Please contact us at (555) 123-4567 to reschedule your appointment, or we will contact you shortly with available times.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {selectedAppointment && (
+              <div className="space-y-2">
+                <p><strong>Service:</strong> {selectedAppointment.service}</p>
+                <p><strong>Current Date:</strong> {selectedAppointment.date}</p>
+                <p><strong>Current Time:</strong> {selectedAppointment.time}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRescheduleDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button className="bg-alma-gold hover:bg-alma-gold/90" onClick={confirmReschedule}>
+              Request Reschedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </UserLayout>
   );
 };
