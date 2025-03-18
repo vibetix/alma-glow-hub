@@ -47,6 +47,8 @@ const Login = () => {
           navigate('/admin');
         } else if (formData.email === 'user@alma.com') {
           navigate('/user/dashboard');
+        } else if (formData.email === 'staff@alma.com') {
+          navigate('/staff');
         } else {
           navigate(from);
         }
@@ -71,6 +73,7 @@ const Login = () => {
                 <div className="mt-2 text-sm bg-blue-50 text-blue-700 p-2 rounded">
                   <p><strong>Admin Demo:</strong> admin@alma.com / admin123</p>
                   <p><strong>User Demo:</strong> user@alma.com / user123</p>
+                  <p><strong>Staff Demo:</strong> staff@alma.com / staff123</p>
                 </div>
               </div>
 

@@ -8,7 +8,7 @@ type User = {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'staff';
 };
 
 // Define the auth context type
@@ -38,6 +38,8 @@ const ADMIN_EMAIL = 'admin@alma.com';
 const ADMIN_PASSWORD = 'admin123';
 const USER_EMAIL = 'user@alma.com';
 const USER_PASSWORD = 'user123';
+const STAFF_EMAIL = 'staff@alma.com';
+const STAFF_PASSWORD = 'staff123';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -91,6 +93,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast({
         title: "Login successful",
         description: "Welcome to your dashboard!",
+      });
+      return true;
+    } else if (email === STAFF_EMAIL && password === STAFF_PASSWORD) {
+      const userData: User = {
+        id: '3',
+        email,
+        name: 'Emma Johnson',
+        role: 'staff'
+      };
+      
+      setUser(userData);
+      localStorage.setItem('almaUser', JSON.stringify(userData));
+      setIsLoading(false);
+      toast({
+        title: "Login successful",
+        description: "Welcome to the staff dashboard!",
       });
       return true;
     }

@@ -36,10 +36,16 @@ import UserAppointments from "./pages/user/Appointments";
 import UserOrders from "./pages/user/Orders";
 import UserProfile from "./pages/user/Profile";
 
+// Staff Pages
+import StaffDashboard from "./pages/staff/Dashboard";
+import StaffSchedule from "./pages/staff/Schedule";
+import StaffClients from "./pages/staff/Clients";
+
 // Auth components
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { UserProtectedRoute } from "@/components/UserProtectedRoute";
+import { StaffProtectedRoute } from "@/components/StaffProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -96,6 +102,32 @@ const App = () => (
                 <UserProtectedRoute>
                   <UserProfile />
                 </UserProtectedRoute>
+              } 
+            />
+            
+            {/* Staff Routes (Protected) */}
+            <Route 
+              path="/staff" 
+              element={
+                <StaffProtectedRoute>
+                  <StaffDashboard />
+                </StaffProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff/schedule" 
+              element={
+                <StaffProtectedRoute>
+                  <StaffSchedule />
+                </StaffProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff/clients" 
+              element={
+                <StaffProtectedRoute>
+                  <StaffClients />
+                </StaffProtectedRoute>
               } 
             />
             
