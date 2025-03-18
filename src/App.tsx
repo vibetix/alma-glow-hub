@@ -40,6 +40,11 @@ import UserProfile from "./pages/user/Profile";
 import StaffDashboard from "./pages/staff/Dashboard";
 import StaffSchedule from "./pages/staff/Schedule";
 import StaffClients from "./pages/staff/Clients";
+import StaffServices from "./pages/staff/Services";
+import StaffMessages from "./pages/staff/Messages";
+import StaffTimeManagement from "./pages/staff/TimeManagement";
+import StaffPerformance from "./pages/staff/Performance";
+import StaffSettings from "./pages/staff/Settings";
 
 // Auth components
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -127,6 +132,46 @@ const App = () => (
               element={
                 <StaffProtectedRoute>
                   <StaffClients />
+                </StaffProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff/services" 
+              element={
+                <StaffProtectedRoute>
+                  <StaffServices />
+                </StaffProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff/messages" 
+              element={
+                <StaffProtectedRoute>
+                  <StaffMessages />
+                </StaffProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff/time" 
+              element={
+                <StaffProtectedRoute>
+                  <StaffTimeManagement />
+                </StaffProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff/performance" 
+              element={
+                <StaffProtectedRoute>
+                  <StaffPerformance />
+                </StaffProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff/settings" 
+              element={
+                <StaffProtectedRoute>
+                  <StaffSettings />
                 </StaffProtectedRoute>
               } 
             />

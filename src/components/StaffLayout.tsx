@@ -31,6 +31,10 @@ export const StaffLayout = ({ children }: StaffLayoutProps) => {
     navigate('/login');
   };
 
+  const handleAvailabilityClick = () => {
+    navigate('/staff/time');
+  };
+
   const sidebarLinks = [
     {
       title: "Dashboard",
