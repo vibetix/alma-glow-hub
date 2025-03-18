@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -24,7 +23,6 @@ const Cart = () => {
   const [discount, setDiscount] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // Load cart items from localStorage
   useEffect(() => {
     const storedCart = localStorage.getItem('cart');
     if (storedCart) {
@@ -32,13 +30,11 @@ const Cart = () => {
     }
   }, []);
 
-  // Calculate totals
   const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
-  const tax = subtotal * 0.08; // 8% tax
+  const tax = subtotal * 0.08;
   const shipping = subtotal > 100 ? 0 : 5.99;
   const total = subtotal + tax + shipping - discount;
 
-  // Update quantity
   const updateQuantity = (id: string, newQuantity: number) => {
     if (newQuantity < 1) return;
     
@@ -50,7 +46,6 @@ const Cart = () => {
     localStorage.setItem('cart', JSON.stringify(updatedCart));
   };
 
-  // Remove item
   const removeItem = (id: string) => {
     const updatedCart = cartItems.filter(item => item.id !== id);
     setCartItems(updatedCart);
@@ -62,11 +57,9 @@ const Cart = () => {
     });
   };
 
-  // Apply promo code
   const applyPromoCode = () => {
     setLoading(true);
     
-    // Simulate API call
     setTimeout(() => {
       if (promoCode.toUpperCase() === "WELCOME20") {
         setDiscount(subtotal * 0.2);
@@ -210,12 +203,14 @@ const Cart = () => {
                       </p>
                     </div>
                     
-                    <Button 
-                      className="w-full bg-alma-gold hover:bg-alma-gold/90 text-white" 
-                      size="lg"
-                    >
-                      Proceed to Checkout
-                    </Button>
+                    <Link to="/checkout">
+                      <Button 
+                        className="w-full bg-alma-gold hover:bg-alma-gold/90 text-white" 
+                        size="lg"
+                      >
+                        Proceed to Checkout
+                      </Button>
+                    </Link>
                     
                     <div className="text-sm text-center text-gray-500">
                       <p>Secure checkout powered by Stripe</p>
