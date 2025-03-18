@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { FileDown, FileSpreadsheet, FileCsv } from "lucide-react";
+import { FileDown, FileSpreadsheet, FileText } from "lucide-react";
 
 type ExportType = "products" | "customers" | "orders" | "appointments";
 
@@ -56,7 +56,7 @@ export const DataExport = () => {
               className="flex-1"
               disabled={isExporting}
             >
-              <FileCsv className="mr-2 h-4 w-4" />
+              <FileText className="mr-2 h-4 w-4" />
               Export as CSV
             </Button>
             <Button 

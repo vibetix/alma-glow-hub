@@ -51,11 +51,11 @@ export const StaffPerformance = () => {
                 </div>
               </div>
               <div className="flex items-center">
-                <Badge variant={index === 0 ? "gold" : "outline"} className="mr-2">
+                <Badge variant={index === 0 ? "default" : "outline"} className="mr-2 bg-amber-500 hover:bg-amber-600">
                   {index === 0 && <Award className="mr-1 h-3 w-3" />}
                   {staff.appointments} appts
                 </Badge>
-                <Badge variant={index === 0 ? "purple" : "secondary"}>
+                <Badge variant="secondary" className={index === 0 ? "bg-purple-600 hover:bg-purple-700 text-white" : ""}>
                   ${staff.revenue}
                 </Badge>
               </div>

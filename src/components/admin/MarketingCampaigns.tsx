@@ -73,10 +73,11 @@ export const MarketingCampaigns = () => {
                 <h3 className="font-medium">{campaign.name}</h3>
                 <Badge 
                   variant={
-                    campaign.status === "active" ? "gold" : 
+                    campaign.status === "active" ? "default" : 
                     campaign.status === "scheduled" ? "secondary" : 
                     "outline"
                   }
+                  className={campaign.status === "active" ? "bg-amber-500 hover:bg-amber-600" : ""}
                 >
                   {campaign.status}
                 </Badge>
