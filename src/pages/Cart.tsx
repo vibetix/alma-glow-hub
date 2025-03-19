@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -32,7 +33,7 @@ const Cart = () => {
 
   const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
   const tax = subtotal * 0.08;
-  const shipping = subtotal > 100 ? 0 : 5.99;
+  const shipping = subtotal > 500 ? 0 : 30;
   const total = subtotal + tax + shipping - discount;
 
   const updateQuantity = (id: string, newQuantity: number) => {
@@ -104,7 +105,7 @@ const Cart = () => {
                         <div className="flex-grow">
                           <div className="flex flex-col sm:flex-row sm:justify-between">
                             <h3 className="font-medium text-lg">{item.name}</h3>
-                            <p className="font-medium text-alma-gold">${item.price.toFixed(2)}</p>
+                            <p className="font-medium text-alma-gold">₵{item.price.toFixed(2)}</p>
                           </div>
                           
                           <div className="flex items-center justify-between mt-4">
@@ -158,27 +159,27 @@ const Cart = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span>Subtotal</span>
-                        <span>${subtotal.toFixed(2)}</span>
+                        <span>₵{subtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Tax</span>
-                        <span>${tax.toFixed(2)}</span>
+                        <span>₵{tax.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Shipping</span>
-                        <span>{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
+                        <span>{shipping === 0 ? "Free" : `₵${shipping.toFixed(2)}`}</span>
                       </div>
                       
                       {discount > 0 && (
                         <div className="flex justify-between text-green-600">
                           <span>Discount</span>
-                          <span>-${discount.toFixed(2)}</span>
+                          <span>-₵{discount.toFixed(2)}</span>
                         </div>
                       )}
                       
                       <div className="pt-3 border-t flex justify-between font-medium text-lg">
                         <span>Total</span>
-                        <span>${total.toFixed(2)}</span>
+                        <span>₵{total.toFixed(2)}</span>
                       </div>
                     </div>
                     

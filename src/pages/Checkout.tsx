@@ -6,7 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PageTransition } from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, CreditCard, Truck, CheckCircle } from "lucide-react";
+import { ArrowLeft, CreditCard, Truck, CheckCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 import { ShippingForm } from "@/components/checkout/ShippingForm";
@@ -38,7 +38,7 @@ const Checkout = () => {
   // Calculate totals
   const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
   const tax = subtotal * 0.08; // 8% tax
-  const shipping = subtotal > 100 ? 0 : 5.99;
+  const shipping = subtotal > 500 ? 0 : 30;
   const total = subtotal + tax + shipping;
   
   const handleShippingSubmit = (data) => {

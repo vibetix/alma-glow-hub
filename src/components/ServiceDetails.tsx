@@ -42,7 +42,7 @@ export const ServiceDetails = ({ services, bookingUrl }: ServiceDetailsProps) =>
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-xl font-serif font-medium">{service.name}</h3>
-                  <div className="text-alma-gold font-medium">${service.price}</div>
+                  <div className="text-alma-gold font-medium">₵{service.price}</div>
                 </div>
                 <p className="text-gray-600 mb-3">{service.description}</p>
                 <div className="text-sm text-gray-500 mb-6">Duration: {service.duration}</div>

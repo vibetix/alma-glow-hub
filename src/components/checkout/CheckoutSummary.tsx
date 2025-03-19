@@ -39,7 +39,7 @@ export const CheckoutSummary = ({
               <h4 className="font-medium">{item.name}</h4>
               <div className="flex justify-between mt-1">
                 <span className="text-gray-500">Qty: {item.quantity}</span>
-                <span>${(item.price * item.quantity).toFixed(2)}</span>
+                <span>₵{(item.price * item.quantity).toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -49,20 +49,20 @@ export const CheckoutSummary = ({
       <div className="space-y-3 pt-3 border-t">
         <div className="flex justify-between">
           <span>Subtotal</span>
-          <span>${subtotal.toFixed(2)}</span>
+          <span>₵{subtotal.toFixed(2)}</span>
         </div>
         <div className="flex justify-between">
           <span>Tax</span>
-          <span>${tax.toFixed(2)}</span>
+          <span>₵{tax.toFixed(2)}</span>
         </div>
         <div className="flex justify-between">
           <span>Shipping</span>
-          <span>{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
+          <span>{shipping === 0 ? "Free" : `₵${shipping.toFixed(2)}`}</span>
         </div>
         
         <div className="pt-3 border-t flex justify-between font-medium text-lg">
           <span>Total</span>
-          <span>${total.toFixed(2)}</span>
+          <span>₵{total.toFixed(2)}</span>
         </div>
       </div>
     </Card>

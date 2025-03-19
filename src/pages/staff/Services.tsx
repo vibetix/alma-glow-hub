@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Scissors, Star, DollarSign } from "lucide-react";
+import { Clock, Scissors, Star, BanknoteIcon } from "lucide-react";
 
 // Mock service data
 const serviceCategories = [
@@ -13,29 +13,29 @@ const serviceCategories = [
     id: 1,
     name: "Hair",
     services: [
-      { id: 1, name: "Women's Haircut", duration: 60, price: 85, featured: true },
-      { id: 2, name: "Men's Haircut", duration: 45, price: 55, featured: false },
-      { id: 3, name: "Blowout", duration: 45, price: 65, featured: false },
-      { id: 4, name: "Color", duration: 120, price: 125, featured: true },
-      { id: 5, name: "Highlights", duration: 150, price: 175, featured: true },
+      { id: 1, name: "Women's Haircut", duration: 60, price: 450, featured: true },
+      { id: 2, name: "Men's Haircut", duration: 45, price: 280, featured: false },
+      { id: 3, name: "Blowout", duration: 45, price: 320, featured: false },
+      { id: 4, name: "Color", duration: 120, price: 620, featured: true },
+      { id: 5, name: "Highlights", duration: 150, price: 850, featured: true },
     ]
   },
   {
     id: 2,
     name: "Skin Care",
     services: [
-      { id: 6, name: "Signature Facial", duration: 60, price: 95, featured: true },
-      { id: 7, name: "Deep Cleansing", duration: 75, price: 110, featured: false },
-      { id: 8, name: "Anti-Aging Treatment", duration: 90, price: 140, featured: true },
+      { id: 6, name: "Signature Facial", duration: 60, price: 470, featured: true },
+      { id: 7, name: "Deep Cleansing", duration: 75, price: 550, featured: false },
+      { id: 8, name: "Anti-Aging Treatment", duration: 90, price: 700, featured: true },
     ]
   },
   {
     id: 3,
     name: "Nail Care",
     services: [
-      { id: 9, name: "Manicure", duration: 45, price: 40, featured: false },
-      { id: 10, name: "Pedicure", duration: 60, price: 65, featured: true },
-      { id: 11, name: "Gel Polish", duration: 60, price: 55, featured: false },
+      { id: 9, name: "Manicure", duration: 45, price: 200, featured: false },
+      { id: 10, name: "Pedicure", duration: 60, price: 320, featured: true },
+      { id: 11, name: "Gel Polish", duration: 60, price: 270, featured: false },
     ]
   }
 ];
@@ -86,8 +86,8 @@ const Services = () => {
                               {service.duration} min
                             </div>
                             <div className="flex items-center">
-                              <DollarSign className="mr-1 h-3 w-3" />
-                              ${service.price}
+                              <BanknoteIcon className="mr-1 h-3 w-3" />
+                              ₵{service.price}
                             </div>
                             <div className="flex items-center">
                               <Star className="mr-1 h-3 w-3 fill-yellow-400 text-yellow-400" />

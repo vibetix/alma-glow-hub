@@ -174,11 +174,11 @@ export const ProductCard = ({
           <div className="mt-2 flex items-center">
             {isSale && salePrice ? (
               <>
-                <span className="font-medium text-red-500">${salePrice.toFixed(2)}</span>
-                <span className="ml-2 text-gray-500 line-through text-sm">${price.toFixed(2)}</span>
+                <span className="font-medium text-red-500">₵{salePrice.toFixed(2)}</span>
+                <span className="ml-2 text-gray-500 line-through text-sm">₵{price.toFixed(2)}</span>
               </>
             ) : (
-              <span className="font-medium">${price.toFixed(2)}</span>
+              <span className="font-medium">₵{price.toFixed(2)}</span>
             )}
           </div>
         </div>
