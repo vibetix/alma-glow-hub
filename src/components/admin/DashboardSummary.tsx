@@ -17,6 +17,13 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+export interface DashboardSummaryProps {
+  userCount: number;
+  orderCount: number;
+  appointmentCount: number;
+  productCount: number;
+}
+
 // For demo purposes, we'll use mock data
 const recentActivities = [
   { id: 1, type: "order", description: "New order #ORD-2023-005", time: "10 minutes ago" },
@@ -31,7 +38,12 @@ const topSellingProducts = [
   { id: 3, name: "Hydrating Body Lotion", sales: 87, revenue: 1740 },
 ];
 
-export const DashboardSummary = () => {
+export const DashboardSummary = ({ 
+  userCount, 
+  orderCount, 
+  appointmentCount, 
+  productCount 
+}: DashboardSummaryProps) => {
   return (
     <div className="space-y-6">
       {/* Quick Actions Row */}
@@ -138,22 +150,8 @@ export const DashboardSummary = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Sales Growth</p>
-                <h3 className="text-2xl font-bold mt-1">+12.5%</h3>
-              </div>
-              <div className="p-3 bg-green-100 rounded-full">
-                <TrendingUp className="h-6 w-6 text-green-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">New Customers</p>
-                <h3 className="text-2xl font-bold mt-1">+48</h3>
+                <p className="text-sm font-medium text-gray-500">Users</p>
+                <h3 className="text-2xl font-bold mt-1">{userCount}</h3>
               </div>
               <div className="p-3 bg-blue-100 rounded-full">
                 <Users className="h-6 w-6 text-blue-500" />
@@ -166,8 +164,8 @@ export const DashboardSummary = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Avg Order Value</p>
-                <h3 className="text-2xl font-bold mt-1">$127</h3>
+                <p className="text-sm font-medium text-gray-500">Orders</p>
+                <h3 className="text-2xl font-bold mt-1">{orderCount}</h3>
               </div>
               <div className="p-3 bg-purple-100 rounded-full">
                 <ShoppingBag className="h-6 w-6 text-purple-500" />
@@ -180,8 +178,22 @@ export const DashboardSummary = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Payment Success</p>
-                <h3 className="text-2xl font-bold mt-1">98.3%</h3>
+                <p className="text-sm font-medium text-gray-500">Appointments</p>
+                <h3 className="text-2xl font-bold mt-1">{appointmentCount}</h3>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <Calendar className="h-6 w-6 text-green-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Products</p>
+                <h3 className="text-2xl font-bold mt-1">{productCount}</h3>
               </div>
               <div className="p-3 bg-amber-100 rounded-full">
                 <CreditCard className="h-6 w-6 text-amber-500" />
