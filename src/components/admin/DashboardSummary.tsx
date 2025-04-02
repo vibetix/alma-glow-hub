@@ -127,7 +127,7 @@ export const DashboardSummary = ({
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell className="text-right">{product.sales}</TableCell>
-                    <TableCell className="text-right">${product.revenue}</TableCell>
+                    <TableCell className="text-right">₵{product.revenue.toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

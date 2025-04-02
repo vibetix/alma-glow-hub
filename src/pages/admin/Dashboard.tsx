@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { DashboardSummary } from "@/components/admin/DashboardSummary";
@@ -8,6 +9,7 @@ import { MarketingCampaigns } from "@/components/admin/MarketingCampaigns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 export interface DashboardSummaryProps {
   userCount: number;
@@ -31,19 +33,26 @@ const Dashboard = () => {
       try {
         setLoading(true);
         
+        // Fetch data from all tables
+        const fetchCounts = async () => {
+          return await Promise.all([
+            supabase.from('profiles').select('id', { count: 'exact', head: true }),
+            supabase.from('orders').select('id', { count: 'exact', head: true }),
+            supabase.from('appointments').select('id', { count: 'exact', head: true }),
+            supabase.from('products').select('id', { count: 'exact', head: true })
+          ]);
+        };
+        
         const [
           { count: usersCount, error: usersError },
           { count: ordersCount, error: ordersError },
           { count: appointmentsCount, error: appointmentsError },
           { count: productsCount, error: productsError }
-        ] = await Promise.all([
-          supabase.from('profiles').select('id', { count: 'exact', head: true }),
-          supabase.from('orders').select('id', { count: 'exact', head: true }),
-          supabase.from('appointments').select('id', { count: 'exact', head: true }),
-          supabase.from('products').select('id', { count: 'exact', head: true })
-        ]);
+        ] = await fetchCounts();
         
+        // Check for errors
         if (usersError || ordersError || appointmentsError || productsError) {
+          console.error("Database errors:", { usersError, ordersError, appointmentsError, productsError });
           throw new Error('Failed to fetch dashboard data');
         }
         
@@ -55,6 +64,11 @@ const Dashboard = () => {
         });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
+        toast({
+          title: "Error loading dashboard",
+          description: "Failed to load dashboard data from the database.",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }

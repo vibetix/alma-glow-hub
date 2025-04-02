@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ const Users = () => {
       try {
         setLoading(true);
           
+        // Fetch profiles first
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('*');
@@ -67,15 +69,15 @@ const Users = () => {
           throw profilesError;
         }
         
-        // Fetch users with profiles
-        const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
+        // Then fetch auth users
+        const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
         
-        if (usersError) {
-          throw usersError;
+        if (userError) {
+          throw userError;
         }
         
         // Map profiles to users
-        const usersWithDetails: UserWithDetails[] = usersData.users.map(user => {
+        const usersWithDetails: UserWithDetails[] = userData.users.map(user => {
           const userProfile = profilesData?.find(profile => profile.id === user.id);
           return {
             id: user.id,
