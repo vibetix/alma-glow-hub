@@ -10,7 +10,7 @@ type StaffProtectedRouteProps = {
 };
 
 export const StaffProtectedRoute = ({ children }: StaffProtectedRouteProps) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, profile, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export const StaffProtectedRoute = ({ children }: StaffProtectedRouteProps) => {
     }
 
     // This is specifically for staff routes
-    if (user?.role !== 'staff') {
+    if (profile?.role !== 'staff') {
       toast({
         title: "Access denied",
         description: "This page is only for staff members",
@@ -37,7 +37,7 @@ export const StaffProtectedRoute = ({ children }: StaffProtectedRouteProps) => {
       });
       navigate('/');
     }
-  }, [isAuthenticated, isLoading, navigate, user]);
+  }, [isAuthenticated, isLoading, navigate, user, profile]);
 
   // Show loading spinner while checking auth status
   if (isLoading) {
@@ -50,5 +50,5 @@ export const StaffProtectedRoute = ({ children }: StaffProtectedRouteProps) => {
   }
 
   // If authenticated and is a staff member, render children
-  return isAuthenticated && user?.role === 'staff' ? <>{children}</> : null;
+  return isAuthenticated && profile?.role === 'staff' ? <>{children}</> : null;
 };

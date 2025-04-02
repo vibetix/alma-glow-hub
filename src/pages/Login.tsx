@@ -1,167 +1,143 @@
 
-import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
-import { PageTransition } from "@/components/PageTransition";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useAuth } from "@/contexts/AuthContext";
-import { Lock, Mail, EyeOff, Eye } from "lucide-react";
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useAuth } from '@/contexts/AuthContext';
+import { PageTransition } from '@/components/PageTransition';
+import { Loader2 } from 'lucide-react';
+
+const loginSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+});
 
 const Login = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { login } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    remember: false,
+  const { login, isLoading } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
 
-  // Get the redirect URL from location state or default to home
-  const from = location.state?.from?.pathname || "/";
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleCheckboxChange = (checked: boolean) => {
-    setFormData((prev) => ({ ...prev, remember: checked }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
+    setIsSubmitting(true);
     try {
-      const success = await login(formData.email, formData.password);
+      const success = await login(values.email, values.password);
       if (success) {
-        // Navigate to the page the user tried to visit or dashboard based on role
-        if (formData.email === 'admin@alma.com') {
-          navigate('/admin');
-        } else if (formData.email === 'user@alma.com') {
-          navigate('/user/dashboard');
-        } else if (formData.email === 'staff@alma.com') {
-          navigate('/staff');
-        } else {
-          navigate(from);
-        }
+        navigate('/');
       }
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <>
-      <Navbar />
-      <PageTransition>
-        <section className="py-32 bg-alma-lightgray min-h-screen flex items-center">
-          <div className="container-custom">
-            <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
-              <div className="text-center mb-8">
-                <h1 className="heading-3 mb-2">Welcome Back</h1>
-                <p className="text-gray-600">
-                  Sign in to your Alma Beauty account
-                </p>
-                <div className="mt-2 text-sm bg-blue-50 text-blue-700 p-2 rounded">
-                  <p><strong>Admin Demo:</strong> admin@alma.com / admin123</p>
-                  <p><strong>User Demo:</strong> user@alma.com / user123</p>
-                  <p><strong>Staff Demo:</strong> staff@alma.com / staff123</p>
-                </div>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="your@email.com"
-                      className="pl-10"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor="password">Password</Label>
-                    <Link to="/forgot-password" className="text-sm text-alma-gold hover:underline">
-                      Forgot password?
+    <PageTransition>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h1 className="mt-6 text-3xl font-serif font-bold text-gray-900">Welcome Back</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Sign in to your Alma Beauty Spa account
+            </p>
+          </div>
+          
+          <div className="mt-8 bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="your.email@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="flex items-center justify-between">
+                  <div className="text-sm">
+                    <Link to="#" className="font-medium text-alma-gold hover:text-alma-gold/80">
+                      Forgot your password?
                     </Link>
                   </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
-                    <Input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      className="pl-10 pr-10"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                      onClick={() => setShowPassword(!showPassword)}
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
                 </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="remember" 
-                    checked={formData.remember} 
-                    onCheckedChange={handleCheckboxChange}
-                  />
-                  <Label 
-                    htmlFor="remember" 
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    Remember me
-                  </Label>
-                </div>
-
+                
                 <Button
                   type="submit"
-                  className="w-full bg-alma-gold hover:bg-alma-gold/90 text-white"
-                  disabled={loading}
+                  className="w-full bg-alma-gold hover:bg-alma-gold/90"
+                  disabled={isSubmitting}
                 >
-                  {loading ? "Signing in..." : "Sign In"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    "Sign in"
+                  )}
                 </Button>
               </form>
-
-              <div className="mt-6 pt-6 border-t text-center">
-                <p className="text-sm text-gray-600">
+            </Form>
+            
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-white px-2 text-gray-500">Or</span>
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <p className="text-center text-sm">
                   Don't have an account?{" "}
-                  <Link to="/signup" className="text-alma-gold hover:underline font-medium">
-                    Create an account
+                  <Link to="/signup" className="font-medium text-alma-gold hover:text-alma-gold/80">
+                    Sign up
                   </Link>
                 </p>
               </div>
             </div>
           </div>
-        </section>
-      </PageTransition>
-      <Footer />
-    </>
+        </div>
+      </div>
+    </PageTransition>
   );
 };
 

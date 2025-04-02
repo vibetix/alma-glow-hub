@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
@@ -10,7 +11,7 @@ type ProtectedRouteProps = {
 };
 
 export const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, profile, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,8 +29,8 @@ export const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRoutePr
       return;
     }
 
-    // For admin-only routes, check role
-    if (adminOnly && user?.role !== 'admin') {
+    // For admin-only routes, check role from profile
+    if (adminOnly && profile?.role !== 'admin') {
       toast({
         title: "Access denied",
         description: "You don't have permission to access this page",
@@ -37,13 +38,18 @@ export const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRoutePr
       });
       navigate('/');
     }
-  }, [isAuthenticated, isLoading, navigate, adminOnly, user]);
+  }, [isAuthenticated, isLoading, navigate, adminOnly, user, profile]);
 
-  // Show nothing while checking auth status
+  // Show loading spinner while checking auth status
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-alma-gold" />
+        <span className="ml-2 text-lg">Loading...</span>
+      </div>
+    );
   }
 
   // If authenticated (and has admin rights if required), render children
-  return isAuthenticated && (!adminOnly || user?.role === 'admin') ? <>{children}</> : null;
+  return isAuthenticated && (!adminOnly || profile?.role === 'admin') ? <>{children}</> : null;
 };

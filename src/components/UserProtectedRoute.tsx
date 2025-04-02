@@ -10,7 +10,7 @@ type UserProtectedRouteProps = {
 };
 
 export const UserProtectedRoute = ({ children }: UserProtectedRouteProps) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, profile, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export const UserProtectedRoute = ({ children }: UserProtectedRouteProps) => {
     }
 
     // This is specifically for user routes
-    if (user?.role !== 'user') {
+    if (profile?.role !== 'user') {
       toast({
         title: "Access denied",
         description: "This page is only for regular users",
@@ -37,7 +37,7 @@ export const UserProtectedRoute = ({ children }: UserProtectedRouteProps) => {
       });
       navigate('/');
     }
-  }, [isAuthenticated, isLoading, navigate, user]);
+  }, [isAuthenticated, isLoading, navigate, user, profile]);
 
   // Show loading spinner while checking auth status
   if (isLoading) {
@@ -50,5 +50,5 @@ export const UserProtectedRoute = ({ children }: UserProtectedRouteProps) => {
   }
 
   // If authenticated and is a regular user, render children
-  return isAuthenticated && user?.role === 'user' ? <>{children}</> : null;
+  return isAuthenticated && profile?.role === 'user' ? <>{children}</> : null;
 };

@@ -1,193 +1,183 @@
 
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
-import { PageTransition } from "@/components/PageTransition";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "@/hooks/use-toast";
-import { User, Lock, Mail, EyeOff, Eye } from "lucide-react";
-import { motion } from "framer-motion";
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useAuth } from '@/contexts/AuthContext';
+import { PageTransition } from '@/components/PageTransition';
+import { Loader2 } from 'lucide-react';
+
+const signupSchema = z.object({
+  firstName: z.string().min(2, { message: "First name must be at least 2 characters" }),
+  lastName: z.string().min(2, { message: "Last name must be at least 2 characters" }),
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
 const Signup = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-    agreeTerms: false,
+  const { signup } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<z.infer<typeof signupSchema>>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    },
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleCheckboxChange = (checked: boolean) => {
-    setFormData((prev) => ({ ...prev, agreeTerms: checked }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.agreeTerms) {
-      toast({
-        title: "Terms required",
-        description: "Please agree to the terms and conditions",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setLoading(true);
-
-    // Simulate signup process
-    setTimeout(() => {
-      setLoading(false);
+  const onSubmit = async (values: z.infer<typeof signupSchema>) => {
+    setIsSubmitting(true);
+    try {
+      const success = await signup(
+        values.email,
+        values.password,
+        values.firstName,
+        values.lastName
+      );
       
-      // Demo signup - in a real app, this would create an account in the backend
-      if (formData.fullName && formData.email && formData.password) {
-        toast({
-          title: "Account created",
-          description: "Welcome to Alma Beauty!",
-        });
-        navigate("/");
-      } else {
-        toast({
-          title: "Signup failed",
-          description: "Please check your information and try again",
-          variant: "destructive",
-        });
+      if (success) {
+        navigate('/login');
       }
-    }, 1500);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <>
-      <Navbar />
-      <PageTransition>
-        <section className="py-32 bg-alma-lightgray min-h-screen flex items-center">
-          <div className="container-custom">
-            <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
-              <div className="text-center mb-8">
-                <h1 className="heading-3 mb-2">Create Your Account</h1>
-                <p className="text-gray-600">
-                  Join Alma Beauty and discover premium beauty services
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      placeholder="Your name"
-                      className="pl-10"
-                      value={formData.fullName}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="your@email.com"
-                      className="pl-10"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
-                    <Input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      className="pl-10 pr-10"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                      onClick={() => setShowPassword(!showPassword)}
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Password must be at least 8 characters
-                  </p>
-                </div>
-
-                <div className="flex items-start space-x-2">
-                  <Checkbox 
-                    id="agreeTerms" 
-                    checked={formData.agreeTerms} 
-                    onCheckedChange={handleCheckboxChange}
-                    className="mt-1"
+    <PageTransition>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h1 className="mt-6 text-3xl font-serif font-bold text-gray-900">Create an Account</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Join Alma Beauty Spa and experience luxury
+            </p>
+          </div>
+          
+          <div className="mt-8 bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  <Label 
-                    htmlFor="agreeTerms" 
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    I agree to the{" "}
-                    <Link to="/terms" className="text-alma-gold hover:underline">
-                      Terms of Service
-                    </Link>{" "}
-                    and{" "}
-                    <Link to="/privacy" className="text-alma-gold hover:underline">
-                      Privacy Policy
-                    </Link>
-                  </Label>
+                  
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-
+                
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="your.email@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
                 <Button
                   type="submit"
-                  className="w-full bg-alma-gold hover:bg-alma-gold/90 text-white"
-                  disabled={loading}
+                  className="w-full bg-alma-gold hover:bg-alma-gold/90"
+                  disabled={isSubmitting}
                 >
-                  {loading ? "Creating account..." : "Create Account"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    "Sign up"
+                  )}
                 </Button>
               </form>
-
-              <div className="mt-6 pt-6 border-t text-center">
-                <p className="text-sm text-gray-600">
-                  Already have an account?{" "}
-                  <Link to="/login" className="text-alma-gold hover:underline font-medium">
-                    Sign in
-                  </Link>
-                </p>
-              </div>
+            </Form>
+            
+            <div className="mt-6">
+              <p className="text-center text-sm">
+                Already have an account?{" "}
+                <Link to="/login" className="font-medium text-alma-gold hover:text-alma-gold/80">
+                  Sign in
+                </Link>
+              </p>
             </div>
           </div>
-        </section>
-      </PageTransition>
-      <Footer />
-    </>
+        </div>
+      </div>
+    </PageTransition>
   );
 };
 
