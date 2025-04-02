@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,130 +33,139 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
-import { Search, CreditCard, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Search, CreditCard, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { formatCedis } from "@/lib/formatters";
 
-// Mock data for payments
-const PAYMENTS = [
-  {
-    id: "PAY-001",
-    orderId: "ORD-001",
-    customer: {
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
-    },
-    amount: 119.97,
-    method: "credit_card",
-    status: "completed",
-    date: new Date(2023, 6, 15),
-    cardInfo: {
-      type: "Visa",
-      last4: "4242",
-    },
-  },
-  {
-    id: "PAY-002",
-    orderId: "ORD-002",
-    customer: {
-      name: "John Doe",
-      email: "john.doe@example.com",
-    },
-    amount: 29.99,
-    method: "credit_card",
-    status: "completed",
-    date: new Date(2023, 6, 18),
-    cardInfo: {
-      type: "Mastercard",
-      last4: "1234",
-    },
-  },
-  {
-    id: "PAY-003",
-    orderId: "ORD-003",
-    customer: {
-      name: "Emma Wilson",
-      email: "emma.wilson@example.com",
-    },
-    amount: 63.97,
-    method: "mobile_money",
-    status: "pending",
-    date: new Date(2023, 6, 20),
-    cardInfo: null,
-  },
-  {
-    id: "PAY-004",
-    orderId: "ORD-004",
-    customer: {
-      name: "Michael Brown",
-      email: "michael.brown@example.com",
-    },
-    amount: 79.98,
-    method: "credit_card",
-    status: "failed",
-    date: new Date(2023, 6, 22),
-    cardInfo: {
-      type: "Visa",
-      last4: "8765",
-    },
-  },
-  {
-    id: "PAY-005",
-    orderId: "ORD-005",
-    customer: {
-      name: "Sophia Garcia",
-      email: "sophia.garcia@example.com",
-    },
-    amount: 50.98,
-    method: "cash_on_delivery",
-    status: "completed",
-    date: new Date(2023, 6, 25),
-    cardInfo: null,
-  },
-];
-
-// Format currency
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
-};
-
-// Get payment method name
-const getPaymentMethodName = (method: string) => {
-  switch (method) {
-    case "credit_card":
-      return "Credit Card";
-    case "mobile_money":
-      return "Mobile Money";
-    case "cash_on_delivery":
-      return "Cash on Delivery";
-    default:
-      return method;
-  }
-};
-
-// Get status icon based on payment status
-const getStatusIcon = (status: string) => {
-  switch(status) {
-    case "completed":
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
-    case "pending":
-      return <Clock className="h-4 w-4 text-yellow-500" />;
-    case "failed":
-      return <XCircle className="h-4 w-4 text-red-500" />;
-    default:
-      return <CreditCard className="h-4 w-4" />;
-  }
-};
+interface Payment {
+  id: string;
+  orderId: string;
+  customer: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  amount: number;
+  method: string;
+  status: string;
+  date: Date;
+  cardInfo: {
+    type?: string;
+    last4?: string;
+  } | null;
+}
 
 const Payments = () => {
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   
+  useEffect(() => {
+    fetchPayments();
+    
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('order-payment-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'orders' }, 
+        (payload) => {
+          console.log('Order/payment change received:', payload);
+          fetchPayments();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchPayments = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch orders with payment information
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id, user_id, total, status, payment_intent_id, created_at')
+        .order('created_at', { ascending: false });
+        
+      if (ordersError) throw ordersError;
+      
+      const paymentsData: Payment[] = [];
+      
+      // For each order, get customer details
+      for (const order of (orders || [])) {
+        // Get user profile data
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', order.user_id)
+          .maybeSingle();
+          
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error fetching profile:", profileError);
+        }
+        
+        // Get user email
+        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
+          order.user_id || ''
+        );
+        
+        if (userError && order.user_id) {
+          console.error("Error fetching user data:", userError);
+        }
+        
+        // Determine payment status based on order status
+        let paymentStatus = 'pending';
+        if (order.status === 'delivered' || order.status === 'shipped') {
+          paymentStatus = 'completed';
+        } else if (order.status === 'cancelled') {
+          paymentStatus = 'failed';
+        }
+        
+        // Create payment object
+        const payment: Payment = {
+          id: `PAY-${order.id.substring(0, 6)}`,
+          orderId: order.id,
+          customer: {
+            id: order.user_id || 'guest',
+            name: profile 
+              ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Guest User'
+              : 'Guest User',
+            email: userData?.user.email || 'guest@example.com'
+          },
+          amount: order.total,
+          method: 'credit_card',
+          status: paymentStatus,
+          date: new Date(order.created_at),
+          cardInfo: order.payment_intent_id 
+            ? { type: 'Card', last4: 'xxxx' } 
+            : null
+        };
+        
+        paymentsData.push(payment);
+      }
+      
+      setPayments(paymentsData);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+      toast({
+        title: "Failed to load payments",
+        description: "There was an error loading the payment data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter payments based on search and status
-  const filteredPayments = PAYMENTS.filter((payment) => {
+  const filteredPayments = payments.filter((payment) => {
     const matchesSearch =
       payment.id.toLowerCase().includes(search.toLowerCase()) ||
       payment.orderId.toLowerCase().includes(search.toLowerCase()) ||
@@ -169,9 +178,37 @@ const Payments = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const openDetailsModal = (payment: any) => {
+  const openDetailsModal = (payment: Payment) => {
     setSelectedPayment(payment);
     setIsDetailsModalOpen(true);
+  };
+
+  // Get payment method name
+  const getPaymentMethodName = (method: string) => {
+    switch (method) {
+      case "credit_card":
+        return "Credit Card";
+      case "mobile_money":
+        return "Mobile Money";
+      case "cash_on_delivery":
+        return "Cash on Delivery";
+      default:
+        return method;
+    }
+  };
+
+  // Get status icon based on payment status
+  const getStatusIcon = (status: string) => {
+    switch(status) {
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "pending":
+        return <Clock className="h-4 w-4 text-yellow-500" />;
+      case "failed":
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return <CreditCard className="h-4 w-4" />;
+    }
   };
 
   return (
@@ -186,16 +223,25 @@ const Payments = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(
-                  PAYMENTS
-                    .filter(p => p.status === "completed")
-                    .reduce((sum, payment) => sum + payment.amount, 0)
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                From {PAYMENTS.filter(p => p.status === "completed").length} completed payments
-              </p>
+              {loading ? (
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">
+                    {formatCedis(
+                      payments
+                        .filter(p => p.status === "completed")
+                        .reduce((sum, payment) => sum + payment.amount, 0)
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    From {payments.filter(p => p.status === "completed").length} completed payments
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
           
@@ -206,16 +252,25 @@ const Payments = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(
-                  PAYMENTS
-                    .filter(p => p.status === "pending")
-                    .reduce((sum, payment) => sum + payment.amount, 0)
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                From {PAYMENTS.filter(p => p.status === "pending").length} pending payments
-              </p>
+              {loading ? (
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">
+                    {formatCedis(
+                      payments
+                        .filter(p => p.status === "pending")
+                        .reduce((sum, payment) => sum + payment.amount, 0)
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    From {payments.filter(p => p.status === "pending").length} pending payments
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
           
@@ -226,16 +281,25 @@ const Payments = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(
-                  PAYMENTS
-                    .filter(p => p.status === "failed")
-                    .reduce((sum, payment) => sum + payment.amount, 0)
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                From {PAYMENTS.filter(p => p.status === "failed").length} failed payments
-              </p>
+              {loading ? (
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">
+                    {formatCedis(
+                      payments
+                        .filter(p => p.status === "failed")
+                        .reduce((sum, payment) => sum + payment.amount, 0)
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    From {payments.filter(p => p.status === "failed").length} failed payments
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -293,7 +357,18 @@ const Payments = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPayments.length === 0 ? (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-10">
+                        <div className="flex justify-center">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          Loading payments...
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredPayments.length === 0 ? (
                     <TableRow>
                       <TableCell
                         colSpan={8}
@@ -306,7 +381,7 @@ const Payments = () => {
                     filteredPayments.map((payment) => (
                       <TableRow key={payment.id}>
                         <TableCell>{payment.id}</TableCell>
-                        <TableCell>{payment.orderId}</TableCell>
+                        <TableCell className="font-mono text-xs">{payment.orderId.substring(0, 8)}...</TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">
@@ -321,7 +396,7 @@ const Payments = () => {
                           {format(payment.date, "MMM d, yyyy")}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatCurrency(payment.amount)}
+                          {formatCedis(payment.amount)}
                         </TableCell>
                         <TableCell>
                           {getPaymentMethodName(payment.method)}
@@ -368,7 +443,7 @@ const Payments = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Order ID</h3>
-                  <p className="font-medium">{selectedPayment.orderId}</p>
+                  <p className="font-medium font-mono text-xs">{selectedPayment.orderId}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Customer</h3>
@@ -381,7 +456,7 @@ const Payments = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Amount</h3>
-                  <p className="font-medium">{formatCurrency(selectedPayment.amount)}</p>
+                  <p className="font-medium">{formatCedis(selectedPayment.amount)}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
@@ -404,7 +479,7 @@ const Payments = () => {
                 </div>
                 {selectedPayment.cardInfo && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    {selectedPayment.cardInfo.type} ending in {selectedPayment.cardInfo.last4}
+                    {selectedPayment.cardInfo.type} {selectedPayment.cardInfo.last4 ? `ending in ${selectedPayment.cardInfo.last4}` : ''}
                   </p>
                 )}
               </div>
@@ -413,7 +488,7 @@ const Payments = () => {
                 <h3 className="text-sm font-medium">Notes</h3>
                 {selectedPayment.status === "failed" ? (
                   <p className="text-sm text-red-500 mt-1">
-                    Payment failed. The customer's card was declined.
+                    Payment failed. The customer's payment was declined.
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground mt-1">

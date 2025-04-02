@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -36,72 +36,22 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { format } from "date-fns";
-import { CalendarIcon, Plus, Search } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { format, isSameDay } from "date-fns";
+import { CalendarIcon, Plus, Search, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { Appointment, Service } from "@/types/database";
 
-// Mock data for appointments
-const APPOINTMENTS = [
-  {
-    id: 1,
-    customer: "Jane Smith",
-    email: "jane.smith@example.com",
-    phone: "+1234567890",
-    service: "Swedish Massage",
-    category: "spa",
-    date: new Date(2023, 6, 15, 14, 0), // July 15, 2023, 2:00 PM
-    status: "confirmed",
-  },
-  {
-    id: 2,
-    customer: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+1987654321",
-    service: "Facial Treatment",
-    category: "skin care",
-    date: new Date(2023, 6, 16, 10, 30), // July 16, 2023, 10:30 AM
-    status: "pending",
-  },
-  {
-    id: 3,
-    customer: "Emma Wilson",
-    email: "emma.wilson@example.com",
-    phone: "+1122334455",
-    service: "Haircut and Styling",
-    category: "hair",
-    date: new Date(2023, 6, 17, 13, 0), // July 17, 2023, 1:00 PM
-    status: "completed",
-  },
-  {
-    id: 4,
-    customer: "Michael Brown",
-    email: "michael.brown@example.com",
-    phone: "+1567890123",
-    service: "Deep Tissue Massage",
-    category: "spa",
-    date: new Date(2023, 6, 18, 15, 30), // July 18, 2023, 3:30 PM
-    status: "cancelled",
-  },
-  {
-    id: 5,
-    customer: "Sophia Garcia",
-    email: "sophia.garcia@example.com",
-    phone: "+1654321987",
-    service: "Manicure and Pedicure",
-    category: "spa",
-    date: new Date(2023, 6, 19, 11, 0), // July 19, 2023, 11:00 AM
-    status: "confirmed",
-  },
-];
-
-// Mock data for services
-const SERVICES = [
-  { id: 1, name: "Swedish Massage", category: "spa", duration: 60, price: 85.00 },
-  { id: 2, name: "Deep Tissue Massage", category: "spa", duration: 60, price: 95.00 },
-  { id: 3, name: "Hot Stone Massage", category: "spa", duration: 90, price: 120.00 },
-  { id: 4, name: "Facial Treatment", category: "skin care", duration: 60, price: 75.00 },
-  { id: 5, name: "Haircut and Styling", category: "hair", duration: 45, price: 65.00 },
-  { id: 6, name: "Manicure and Pedicure", category: "spa", duration: 75, price: 55.00 },
-];
+interface AppointmentWithServiceAndClient extends Appointment {
+  service?: Service;
+  client?: {
+    first_name: string | null;
+    last_name: string | null;
+    email: string;
+    phone: string | null;
+  };
+}
 
 const Appointments = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -110,61 +60,252 @@ const Appointments = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithServiceAndClient | null>(null);
+  const [appointments, setAppointments] = useState<AppointmentWithServiceAndClient[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [staffMembers, setStaffMembers] = useState<any[]>([]);
+
   const [newAppointment, setNewAppointment] = useState({
-    customer: "",
-    email: "",
-    phone: "",
-    service: "",
+    client_id: "",
+    staff_id: "",
+    service_id: "",
     date: new Date(),
     time: "10:00",
+    notes: "",
+    status: "pending",
   });
 
+  useEffect(() => {
+    fetchAppointments();
+    fetchServices();
+    fetchStaffMembers();
+    
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('appointment-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'appointments' }, 
+        (payload) => {
+          console.log('Appointment change received:', payload);
+          fetchAppointments();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true);
+      
+      // Get all appointments with services
+      const { data: appointmentsData, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select(`
+          *,
+          service:service_id (*)
+        `)
+        .order('date', { ascending: true });
+        
+      if (appointmentsError) throw appointmentsError;
+      
+      // Get client details for each appointment
+      const appointmentsWithClients: AppointmentWithServiceAndClient[] = [];
+      for (const appointment of (appointmentsData || [])) {
+        // Get client details
+        const { data: clientData, error: clientError } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, phone')
+          .eq('id', appointment.client_id)
+          .single();
+          
+        if (clientError && clientError.code !== 'PGRST116') {
+          console.error("Error fetching client data:", clientError);
+        }
+        
+        // Get client email from auth
+        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
+          appointment.client_id
+        );
+        
+        if (userError) {
+          console.error("Error fetching client auth data:", userError);
+        }
+        
+        appointmentsWithClients.push({
+          ...appointment,
+          client: {
+            first_name: clientData?.first_name || null,
+            last_name: clientData?.last_name || null,
+            email: userData?.user.email || 'Unknown',
+            phone: clientData?.phone || null
+          }
+        });
+      }
+      
+      setAppointments(appointmentsWithClients);
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+      toast({
+        title: "Error loading appointments",
+        description: "Failed to load appointments from the database.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchServices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .order('name');
+        
+      if (error) throw error;
+      
+      setServices(data || []);
+    } catch (error) {
+      console.error("Error fetching services:", error);
+      toast({
+        title: "Error loading services",
+        description: "Failed to load services from the database.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchStaffMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'staff');
+        
+      if (error) throw error;
+      
+      setStaffMembers(data || []);
+    } catch (error) {
+      console.error("Error fetching staff:", error);
+      toast({
+        title: "Error loading staff",
+        description: "Failed to load staff members from the database.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setNewAppointment((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddAppointment = async () => {
+    try {
+      if (!newAppointment.client_id || !newAppointment.service_id || !newAppointment.date) {
+        toast({
+          title: "Missing required fields",
+          description: "Please fill in all required fields.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const appointmentDate = new Date(newAppointment.date);
+      const formattedDate = format(appointmentDate, "yyyy-MM-dd");
+      
+      const { data, error } = await supabase
+        .from('appointments')
+        .insert([{
+          client_id: newAppointment.client_id,
+          staff_id: newAppointment.staff_id || null,
+          service_id: newAppointment.service_id,
+          date: formattedDate,
+          time: newAppointment.time,
+          notes: newAppointment.notes,
+          status: newAppointment.status,
+        }])
+        .select();
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Appointment created",
+        description: "The appointment has been successfully created.",
+      });
+      
+      setIsAddModalOpen(false);
+      // Reset the form
+      setNewAppointment({
+        client_id: "",
+        staff_id: "",
+        service_id: "",
+        date: new Date(),
+        time: "10:00",
+        notes: "",
+        status: "pending",
+      });
+    } catch (error) {
+      console.error("Error creating appointment:", error);
+      toast({
+        title: "Failed to create appointment",
+        description: "There was an error creating the appointment.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status: newStatus })
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Status updated",
+        description: `Appointment status changed to ${newStatus}.`,
+      });
+    } catch (error) {
+      console.error("Error updating appointment status:", error);
+      toast({
+        title: "Failed to update status",
+        description: "There was an error updating the appointment status.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const openDetailsModal = (appointment: AppointmentWithServiceAndClient) => {
+    setSelectedAppointment(appointment);
+    setIsDetailsModalOpen(true);
+  };
+
   // Filter appointments based on search, status, and category
-  const filteredAppointments = APPOINTMENTS.filter((appointment) => {
+  const filteredAppointments = appointments.filter((appointment) => {
+    const clientName = `${appointment.client?.first_name || ''} ${appointment.client?.last_name || ''}`.trim().toLowerCase();
+    const serviceName = appointment.service?.name?.toLowerCase() || '';
+    
     const matchesSearch =
-      appointment.customer.toLowerCase().includes(search.toLowerCase()) ||
-      appointment.email.toLowerCase().includes(search.toLowerCase()) ||
-      appointment.service.toLowerCase().includes(search.toLowerCase());
+      clientName.includes(search.toLowerCase()) ||
+      serviceName.includes(search.toLowerCase()) ||
+      (appointment.client?.email || '').toLowerCase().includes(search.toLowerCase());
     
     const matchesStatus =
       statusFilter === "all" || appointment.status === statusFilter;
     
     const matchesCategory =
-      categoryFilter === "all" || appointment.category === categoryFilter;
+      categoryFilter === "all" || appointment.service?.category === categoryFilter;
     
     return matchesSearch && matchesStatus && matchesCategory;
   });
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewAppointment((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddAppointment = () => {
-    // In a real app, we would save the appointment to the database
-    console.log("Adding appointment:", newAppointment);
-    setIsAddModalOpen(false);
-    // Reset form
-    setNewAppointment({
-      customer: "",
-      email: "",
-      phone: "",
-      service: "",
-      date: new Date(),
-      time: "10:00",
-    });
-  };
-
-  const handleStatusChange = (id: number, newStatus: string) => {
-    // In a real app, we would update the database
-    console.log(`Changing appointment ${id} status to ${newStatus}`);
-  };
-  
-  const openDetailsModal = (appointment: any) => {
-    setSelectedAppointment(appointment);
-    setIsDetailsModalOpen(true);
-  };
 
   return (
     <AdminLayout title="Appointment Management">
@@ -190,54 +331,62 @@ const Appointments = () => {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="customer">Customer Name</Label>
+                        <Label htmlFor="client_id">Client ID</Label>
                         <Input
-                          id="customer"
-                          name="customer"
-                          value={newAppointment.customer}
+                          id="client_id"
+                          name="client_id"
+                          value={newAppointment.client_id}
                           onChange={handleInputChange}
+                          placeholder="Enter client UUID"
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          name="email"
-                          type="email"
-                          value={newAppointment.email}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="phone">Phone</Label>
-                        <Input
-                          id="phone"
-                          name="phone"
-                          value={newAppointment.phone}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="service">Service</Label>
+                        <Label htmlFor="service_id">Service</Label>
                         <Select
-                          value={newAppointment.service}
+                          value={newAppointment.service_id}
                           onValueChange={(value) =>
                             setNewAppointment((prev) => ({
                               ...prev,
-                              service: value,
+                              service_id: value,
                             }))
                           }
                         >
-                          <SelectTrigger id="service">
+                          <SelectTrigger id="service_id">
                             <SelectValue placeholder="Select a service" />
                           </SelectTrigger>
                           <SelectContent>
-                            {SERVICES.map((service) => (
+                            {services.map((service) => (
                               <SelectItem
                                 key={service.id}
-                                value={service.name}
+                                value={service.id}
                               >
-                                {service.name} (${service.price})
+                                {service.name} (₵{service.price})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="staff_id">Staff (Optional)</Label>
+                        <Select
+                          value={newAppointment.staff_id}
+                          onValueChange={(value) =>
+                            setNewAppointment((prev) => ({
+                              ...prev,
+                              staff_id: value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger id="staff_id">
+                            <SelectValue placeholder="Select staff member" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {staffMembers.map((staff) => (
+                              <SelectItem
+                                key={staff.id}
+                                value={staff.id}
+                              >
+                                {staff.first_name} {staff.last_name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -292,6 +441,17 @@ const Appointments = () => {
                           </SelectContent>
                         </Select>
                       </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="notes">Notes (Optional)</Label>
+                        <Textarea
+                          id="notes"
+                          name="notes"
+                          value={newAppointment.notes}
+                          onChange={handleInputChange}
+                          placeholder="Any special requests or information"
+                          rows={3}
+                        />
+                      </div>
                     </div>
                     <DialogFooter className="sm:justify-end">
                       <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
@@ -343,7 +503,7 @@ const Appointments = () => {
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
                       <SelectItem value="spa">Spa</SelectItem>
-                      <SelectItem value="skin care">Skin Care</SelectItem>
+                      <SelectItem value="skin_care">Skin Care</SelectItem>
                       <SelectItem value="hair">Hair</SelectItem>
                     </SelectContent>
                   </Select>
@@ -361,7 +521,18 @@ const Appointments = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredAppointments.length === 0 ? (
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-10">
+                          <div className="flex justify-center">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          </div>
+                          <div className="mt-2 text-sm text-muted-foreground">
+                            Loading appointments...
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredAppointments.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                           No appointments found.
@@ -372,22 +543,24 @@ const Appointments = () => {
                         <TableRow key={appointment.id}>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{appointment.customer}</div>
+                              <div className="font-medium">
+                                {appointment.client?.first_name} {appointment.client?.last_name || 'Unknown'}
+                              </div>
                               <div className="text-sm text-muted-foreground hidden md:block">
-                                {appointment.email}
+                                {appointment.client?.email}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {appointment.service}
+                            {appointment.service?.name || 'Unknown Service'}
                             <div className="text-xs text-muted-foreground capitalize">
-                              {appointment.category}
+                              {appointment.service?.category || 'Unknown Category'}
                             </div>
                           </TableCell>
                           <TableCell>
-                            {format(appointment.date, "MMM d, yyyy")}
+                            {appointment.date && format(new Date(appointment.date), "MMM d, yyyy")}
                             <div className="text-xs text-muted-foreground">
-                              {format(appointment.date, "h:mm a")}
+                              {appointment.time}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -442,34 +615,32 @@ const Appointments = () => {
                   {date ? format(date, "MMMM d, yyyy") : "No date selected"}
                 </h3>
                 <div className="space-y-2">
-                  {APPOINTMENTS.filter(
-                    (apt) =>
-                      date &&
-                      apt.date.getDate() === date.getDate() &&
-                      apt.date.getMonth() === date.getMonth() &&
-                      apt.date.getFullYear() === date.getFullYear()
-                  ).map((apt) => (
-                    <div
-                      key={apt.id}
-                      className="rounded-md border p-3 text-sm"
-                    >
-                      <div className="font-medium">{apt.service}</div>
-                      <div className="text-muted-foreground">
-                        {format(apt.date, "h:mm a")} - {apt.customer}
-                      </div>
+                  {loading ? (
+                    <div className="text-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                      <p className="text-sm text-muted-foreground mt-2">Loading...</p>
                     </div>
-                  ))}
-                  {date &&
-                    APPOINTMENTS.filter(
-                      (apt) =>
-                        apt.date.getDate() === date.getDate() &&
-                        apt.date.getMonth() === date.getMonth() &&
-                        apt.date.getFullYear() === date.getFullYear()
-                    ).length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        No appointments for this day.
-                      </p>
-                    )}
+                  ) : date && appointments.filter(apt => 
+                      apt.date && isSameDay(new Date(apt.date), date)
+                    ).length > 0 ? (
+                    appointments
+                      .filter(apt => apt.date && isSameDay(new Date(apt.date), date))
+                      .map(apt => (
+                        <div
+                          key={apt.id}
+                          className="rounded-md border p-3 text-sm"
+                        >
+                          <div className="font-medium">{apt.service?.name || 'Unknown Service'}</div>
+                          <div className="text-muted-foreground">
+                            {apt.time} - {apt.client?.first_name} {apt.client?.last_name || 'Unknown'}
+                          </div>
+                        </div>
+                      ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No appointments for this day.
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -488,17 +659,23 @@ const Appointments = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Customer</h3>
-                  <p className="font-medium">{selectedAppointment.customer}</p>
+                  <p className="font-medium">
+                    {selectedAppointment.client?.first_name} {selectedAppointment.client?.last_name || 'Unknown'}
+                  </p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Date & Time</h3>
-                  <p className="font-medium">{format(selectedAppointment.date, "PPP")}</p>
-                  <p className="text-sm text-muted-foreground">{format(selectedAppointment.date, "h:mm a")}</p>
+                  <p className="font-medium">
+                    {selectedAppointment.date && format(new Date(selectedAppointment.date), "PPP")}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{selectedAppointment.time}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Service</h3>
-                  <p className="font-medium">{selectedAppointment.service}</p>
-                  <p className="text-sm text-muted-foreground capitalize">{selectedAppointment.category}</p>
+                  <p className="font-medium">{selectedAppointment.service?.name || 'Unknown Service'}</p>
+                  <p className="text-sm text-muted-foreground capitalize">
+                    {selectedAppointment.service?.category || 'Unknown Category'}
+                  </p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
@@ -507,12 +684,14 @@ const Appointments = () => {
               </div>
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Contact Information</h3>
-                <p className="text-sm">Email: {selectedAppointment.email}</p>
-                <p className="text-sm">Phone: {selectedAppointment.phone}</p>
+                <p className="text-sm">Email: {selectedAppointment.client?.email || 'Unknown'}</p>
+                <p className="text-sm">Phone: {selectedAppointment.client?.phone || 'Not provided'}</p>
               </div>
               <div className="pt-4 border-t">
                 <h3 className="text-sm font-medium">Notes</h3>
-                <p className="text-sm text-muted-foreground">No additional notes for this appointment.</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedAppointment.notes || 'No additional notes for this appointment.'}
+                </p>
               </div>
             </div>
           )}

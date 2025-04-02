@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +24,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -43,166 +41,142 @@ import {
   CreditCard, 
   Truck, 
   ShoppingBag,
-  Package
+  Package,
+  Loader2
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { formatCedis } from "@/lib/formatters";
+import { Order, OrderItem, Product } from "@/types/database";
 
-// Mock data for orders
-const ORDERS = [
-  {
-    id: "ORD-001",
-    customer: {
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
-    },
-    date: new Date(2023, 6, 15),
-    items: [
-      { id: 1, name: "Organic Facial Serum", quantity: 1, price: 49.99 },
-      { id: 2, name: "Hair Repair Mask", quantity: 2, price: 34.99 },
-    ],
-    shippingAddress: {
-      name: "Jane Smith",
-      address: "123 Main St, Apt 4B",
-      city: "New York",
-      state: "NY",
-      postalCode: "10001",
-      country: "United States",
-    },
-    total: 119.97,
-    status: "delivered",
-    payment: "completed",
-    trackingNumber: "TRK293847563",
-  },
-  {
-    id: "ORD-002",
-    customer: {
-      name: "John Doe",
-      email: "john.doe@example.com",
-    },
-    date: new Date(2023, 6, 18),
-    items: [
-      { id: 3, name: "Deep Conditioning Treatment", quantity: 1, price: 29.99 },
-    ],
-    shippingAddress: {
-      name: "John Doe",
-      address: "456 Oak Avenue",
-      city: "Los Angeles",
-      state: "CA",
-      postalCode: "90001",
-      country: "United States",
-    },
-    total: 29.99,
-    status: "shipped",
-    payment: "completed",
-    trackingNumber: "TRK576839201",
-  },
-  {
-    id: "ORD-003",
-    customer: {
-      name: "Emma Wilson",
-      email: "emma.wilson@example.com",
-    },
-    date: new Date(2023, 6, 20),
-    items: [
-      { id: 4, name: "Natural Face Cleanser", quantity: 1, price: 24.99 },
-      { id: 5, name: "Moisturizing Body Lotion", quantity: 1, price: 19.99 },
-      { id: 6, name: "Volumizing Shampoo", quantity: 1, price: 18.99 },
-    ],
-    shippingAddress: {
-      name: "Emma Wilson",
-      address: "789 Pine Street",
-      city: "Chicago",
-      state: "IL",
-      postalCode: "60007",
-      country: "United States",
-    },
-    total: 63.97,
-    status: "pending",
-    payment: "pending",
-    trackingNumber: null,
-  },
-  {
-    id: "ORD-004",
-    customer: {
-      name: "Michael Brown",
-      email: "michael.brown@example.com",
-    },
-    date: new Date(2023, 6, 22),
-    items: [
-      { id: 7, name: "Anti-Aging Eye Cream", quantity: 2, price: 39.99 },
-    ],
-    shippingAddress: {
-      name: "Michael Brown",
-      address: "101 Cedar Road",
-      city: "Boston",
-      state: "MA",
-      postalCode: "02108",
-      country: "United States",
-    },
-    total: 79.98,
-    status: "cancelled",
-    payment: "failed",
-    trackingNumber: null,
-  },
-  {
-    id: "ORD-005",
-    customer: {
-      name: "Sophia Garcia",
-      email: "sophia.garcia@example.com",
-    },
-    date: new Date(2023, 6, 25),
-    items: [
-      { id: 8, name: "Natural Hair Oil", quantity: 1, price: 27.99 },
-      { id: 9, name: "Exfoliating Face Scrub", quantity: 1, price: 22.99 },
-    ],
-    shippingAddress: {
-      name: "Sophia Garcia",
-      address: "222 Maple Drive",
-      city: "Miami",
-      state: "FL",
-      postalCode: "33101",
-      country: "United States",
-    },
-    total: 50.98,
-    status: "shipped",
-    payment: "completed",
-    trackingNumber: "TRK102938475",
-  }
-];
-
-// Get status icon based on order status
-const getStatusIcon = (status: string) => {
-  switch(status) {
-    case "delivered":
-      return <PackageCheck className="h-4 w-4 text-green-500" />;
-    case "shipped":
-      return <Truck className="h-4 w-4 text-blue-500" />;
-    case "pending":
-      return <Package className="h-4 w-4 text-yellow-500" />;
-    case "cancelled":
-      return <PackageX className="h-4 w-4 text-red-500" />;
-    default:
-      return <ShoppingBag className="h-4 w-4" />;
-  }
-};
-
-// Format currency
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
-};
+interface ExtendedOrder extends Order {
+  items: (OrderItem & {product?: Product})[];
+  customer: {
+    name: string;
+    email: string;
+  };
+}
 
 const Orders = () => {
-  const [orders, setOrders] = useState(ORDERS);
+  const [orders, setOrders] = useState<ExtendedOrder[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<ExtendedOrder | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   
+  useEffect(() => {
+    fetchOrders();
+    
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('orders-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'orders' }, 
+        (payload) => {
+          console.log('Orders change received:', payload);
+          fetchOrders();
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'order_items' }, 
+        (payload) => {
+          console.log('Order items change received:', payload);
+          fetchOrders();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+  
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch orders
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (ordersError) throw ordersError;
+      
+      const extendedOrders: ExtendedOrder[] = [];
+      
+      // For each order, get customer details and order items
+      for (const order of (ordersData || [])) {
+        // Get order items
+        const { data: orderItems, error: itemsError } = await supabase
+          .from('order_items')
+          .select(`*, product:product_id (*)`)
+          .eq('order_id', order.id);
+          
+        if (itemsError) {
+          console.error("Error fetching order items:", itemsError);
+        }
+        
+        // Get customer details
+        let customerName = "Guest";
+        let customerEmail = "guest@example.com";
+        
+        if (order.user_id) {
+          // Get profile
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', order.user_id)
+            .maybeSingle();
+            
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error("Error fetching profile:", profileError);
+          }
+          
+          // Get user email
+          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
+            order.user_id
+          );
+          
+          if (userError) {
+            console.error("Error fetching user data:", userError);
+          }
+          
+          if (profile) {
+            customerName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+          }
+          
+          if (userData) {
+            customerEmail = userData.user.email || customerEmail;
+          }
+        }
+        
+        extendedOrders.push({
+          ...order,
+          items: orderItems || [],
+          customer: {
+            name: customerName,
+            email: customerEmail
+          }
+        });
+      }
+      
+      setOrders(extendedOrders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      toast({
+        title: "Failed to load orders",
+        description: "There was an error loading the orders data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter orders based on search and status
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -215,39 +189,61 @@ const Orders = () => {
 
     const matchesTab = 
       activeTab === "all" || 
-      (activeTab === "pending" && order.status === "pending") ||
-      (activeTab === "shipped" && order.status === "shipped") ||
-      (activeTab === "delivered" && order.status === "delivered") ||
-      (activeTab === "cancelled" && order.status === "cancelled");
+      order.status === activeTab;
     
     return matchesSearch && matchesStatus && matchesTab;
   });
 
-  const openDetailsModal = (order: any) => {
+  const openDetailsModal = (order: ExtendedOrder) => {
     setSelectedOrder(order);
     setIsDetailsModalOpen(true);
   };
 
-  const updateOrderStatus = (orderId: string, newStatus: string) => {
-    // Update order status in the state
-    const updatedOrders = orders.map(order => {
-      if (order.id === orderId) {
-        return { ...order, status: newStatus };
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+        
+      if (error) throw error;
+      
+      // Also update the selected order if it's currently being viewed
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, status: newStatus as any });
       }
-      return order;
-    });
-    
-    setOrders(updatedOrders);
-    
-    // Also update the selected order if it's currently being viewed
-    if (selectedOrder && selectedOrder.id === orderId) {
-      setSelectedOrder({ ...selectedOrder, status: newStatus });
+      
+      toast({
+        title: "Order updated",
+        description: `Order status changed to ${newStatus}`,
+      });
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      toast({
+        title: "Failed to update order",
+        description: "There was an error updating the order status.",
+        variant: "destructive",
+      });
     }
-    
-    toast({
-      title: "Order updated",
-      description: `Order ${orderId} status changed to ${newStatus}`,
-    });
+  };
+
+  // Get status icon based on order status
+  const getStatusIcon = (status: string) => {
+    switch(status) {
+      case "delivered":
+        return <PackageCheck className="h-4 w-4 text-green-500" />;
+      case "shipped":
+        return <Truck className="h-4 w-4 text-blue-500" />;
+      case "pending":
+        return <Package className="h-4 w-4 text-yellow-500" />;
+      case "cancelled":
+        return <PackageX className="h-4 w-4 text-red-500" />;
+      default:
+        return <ShoppingBag className="h-4 w-4" />;
+    }
   };
 
   return (
@@ -259,10 +255,11 @@ const Orders = () => {
           value={activeTab}
           onValueChange={setActiveTab}
         >
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center mb-6 overflow-x-auto">
             <TabsList>
               <TabsTrigger value="all">All Orders</TabsTrigger>
               <TabsTrigger value="pending">Pending</TabsTrigger>
+              <TabsTrigger value="processing">Processing</TabsTrigger>
               <TabsTrigger value="shipped">Shipped</TabsTrigger>
               <TabsTrigger value="delivered">Delivered</TabsTrigger>
               <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
@@ -300,6 +297,7 @@ const Orders = () => {
                       <SelectContent>
                         <SelectItem value="all">All Statuses</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="processing">Processing</SelectItem>
                         <SelectItem value="shipped">Shipped</SelectItem>
                         <SelectItem value="delivered">Delivered</SelectItem>
                         <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -323,7 +321,18 @@ const Orders = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredOrders.length === 0 ? (
+                      {loading ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-10">
+                            <div className="flex justify-center">
+                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            </div>
+                            <div className="mt-2 text-sm text-muted-foreground">
+                              Loading orders...
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredOrders.length === 0 ? (
                         <TableRow>
                           <TableCell
                             colSpan={7}
@@ -335,7 +344,7 @@ const Orders = () => {
                       ) : (
                         filteredOrders.map((order) => (
                           <TableRow key={order.id}>
-                            <TableCell>{order.id}</TableCell>
+                            <TableCell className="font-mono text-xs">{order.id.substring(0, 8)}...</TableCell>
                             <TableCell>
                               <div>
                                 <div className="font-medium">
@@ -347,10 +356,10 @@ const Orders = () => {
                               </div>
                             </TableCell>
                             <TableCell>
-                              {format(order.date, "MMM d, yyyy")}
+                              {format(new Date(order.created_at), "MMM d, yyyy")}
                             </TableCell>
                             <TableCell>
-                              {formatCurrency(order.total)}
+                              {formatCedis(order.total)}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
@@ -362,14 +371,15 @@ const Orders = () => {
                             </TableCell>
                             <TableCell>
                               <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                order.payment === "completed" 
+                                order.status === "delivered" || order.status === "shipped" 
                                   ? "bg-green-100 text-green-800" 
-                                  : order.payment === "pending"
+                                  : order.status === "pending" || order.status === "processing"
                                   ? "bg-yellow-100 text-yellow-800"
                                   : "bg-red-100 text-red-800"
                               }`}>
                                 <CreditCard className="mr-1 h-3 w-3" />
-                                {order.payment}
+                                {order.status === "cancelled" ? "failed" : 
+                                 (order.status === "delivered" || order.status === "shipped") ? "completed" : "pending"}
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
@@ -391,362 +401,109 @@ const Orders = () => {
             </Card>
           </TabsContent>
           
-          {/* Other tab contents use the same table but filtered */}
-          <TabsContent value="pending" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Pending Orders</CardTitle>
-                <CardDescription>Orders waiting to be processed</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Order ID</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Payment</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredOrders.filter(order => order.status === "pending").length === 0 ? (
+          {/* Other tab contents use the same table but filtered by status */}
+          {["pending", "processing", "shipped", "delivered", "cancelled"].map(status => (
+            <TabsContent key={status} value={status} className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>{status.charAt(0).toUpperCase() + status.slice(1)} Orders</CardTitle>
+                  <CardDescription>Orders with {status} status</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
                         <TableRow>
-                          <TableCell
-                            colSpan={7}
-                            className="text-center py-6 text-muted-foreground"
-                          >
-                            No orders found.
-                          </TableCell>
+                          <TableHead>Order ID</TableHead>
+                          <TableHead>Customer</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Total</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Payment</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                      ) : (
-                        filteredOrders.filter(order => order.status === "pending").map((order) => (
-                          <TableRow key={order.id}>
-                            <TableCell>{order.id}</TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">
-                                  {order.customer.name}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {order.customer.email}
-                                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {loading ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-10">
+                              <div className="flex justify-center">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              {format(order.date, "MMM d, yyyy")}
-                            </TableCell>
-                            <TableCell>
-                              {formatCurrency(order.total)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                {getStatusIcon(order.status)}
-                                <span className="ml-2 capitalize">
-                                  {order.status}
-                                </span>
+                              <div className="mt-2 text-sm text-muted-foreground">
+                                Loading orders...
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                order.payment === "completed" 
-                                  ? "bg-green-100 text-green-800" 
-                                  : order.payment === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}>
-                                <CreditCard className="mr-1 h-3 w-3" />
-                                {order.payment}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openDetailsModal(order)}
-                              >
-                                Details
-                              </Button>
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="shipped" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Shipped Orders</CardTitle>
-                <CardDescription>Orders that have been shipped</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Order ID</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Payment</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredOrders.filter(order => order.status === "shipped").length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={7}
-                            className="text-center py-6 text-muted-foreground"
-                          >
-                            No orders found.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredOrders.filter(order => order.status === "shipped").map((order) => (
-                          <TableRow key={order.id}>
-                            <TableCell>{order.id}</TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">
-                                  {order.customer.name}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {order.customer.email}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {format(order.date, "MMM d, yyyy")}
-                            </TableCell>
-                            <TableCell>
-                              {formatCurrency(order.total)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                {getStatusIcon(order.status)}
-                                <span className="ml-2 capitalize">
-                                  {order.status}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                order.payment === "completed" 
-                                  ? "bg-green-100 text-green-800" 
-                                  : order.payment === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}>
-                                <CreditCard className="mr-1 h-3 w-3" />
-                                {order.payment}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openDetailsModal(order)}
-                              >
-                                Details
-                              </Button>
+                        ) : filteredOrders.filter(order => order.status === status).length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={7}
+                              className="text-center py-6 text-muted-foreground"
+                            >
+                              No orders found.
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="delivered" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Delivered Orders</CardTitle>
-                <CardDescription>Orders that have been delivered</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Order ID</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Payment</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredOrders.filter(order => order.status === "delivered").length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={7}
-                            className="text-center py-6 text-muted-foreground"
-                          >
-                            No orders found.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredOrders.filter(order => order.status === "delivered").map((order) => (
-                          <TableRow key={order.id}>
-                            <TableCell>{order.id}</TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">
-                                  {order.customer.name}
+                        ) : (
+                          filteredOrders.filter(order => order.status === status).map((order) => (
+                            <TableRow key={order.id}>
+                              <TableCell className="font-mono text-xs">{order.id.substring(0, 8)}...</TableCell>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">
+                                    {order.customer.name}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {order.customer.email}
+                                  </div>
                                 </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {order.customer.email}
+                              </TableCell>
+                              <TableCell>
+                                {format(new Date(order.created_at), "MMM d, yyyy")}
+                              </TableCell>
+                              <TableCell>
+                                {formatCedis(order.total)}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center">
+                                  {getStatusIcon(order.status)}
+                                  <span className="ml-2 capitalize">
+                                    {order.status}
+                                  </span>
                                 </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {format(order.date, "MMM d, yyyy")}
-                            </TableCell>
-                            <TableCell>
-                              {formatCurrency(order.total)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                {getStatusIcon(order.status)}
-                                <span className="ml-2 capitalize">
-                                  {order.status}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                order.payment === "completed" 
-                                  ? "bg-green-100 text-green-800" 
-                                  : order.payment === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}>
-                                <CreditCard className="mr-1 h-3 w-3" />
-                                {order.payment}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openDetailsModal(order)}
-                              >
-                                Details
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="cancelled" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Cancelled Orders</CardTitle>
-                <CardDescription>Orders that have been cancelled</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Order ID</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Payment</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredOrders.filter(order => order.status === "cancelled").length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={7}
-                            className="text-center py-6 text-muted-foreground"
-                          >
-                            No orders found.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredOrders.filter(order => order.status === "cancelled").map((order) => (
-                          <TableRow key={order.id}>
-                            <TableCell>{order.id}</TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">
-                                  {order.customer.name}
+                              </TableCell>
+                              <TableCell>
+                                <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                  order.status === "delivered" || order.status === "shipped" 
+                                    ? "bg-green-100 text-green-800" 
+                                    : order.status === "pending" || order.status === "processing"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}>
+                                  <CreditCard className="mr-1 h-3 w-3" />
+                                  {order.status === "cancelled" ? "failed" : 
+                                  (order.status === "delivered" || order.status === "shipped") ? "completed" : "pending"}
                                 </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {order.customer.email}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {format(order.date, "MMM d, yyyy")}
-                            </TableCell>
-                            <TableCell>
-                              {formatCurrency(order.total)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                {getStatusIcon(order.status)}
-                                <span className="ml-2 capitalize">
-                                  {order.status}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                order.payment === "completed" 
-                                  ? "bg-green-100 text-green-800" 
-                                  : order.payment === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}>
-                                <CreditCard className="mr-1 h-3 w-3" />
-                                {order.payment}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openDetailsModal(order)}
-                              >
-                                Details
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openDetailsModal(order)}
+                                >
+                                  Details
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          ))}
         </Tabs>
       </div>
 
@@ -769,7 +526,7 @@ const Orders = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Date</h3>
-                  <p className="font-medium">{format(selectedOrder.date, "PPP")}</p>
+                  <p className="font-medium">{format(new Date(selectedOrder.created_at), "PPP")}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
@@ -782,6 +539,7 @@ const Orders = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="processing">Processing</SelectItem>
                       <SelectItem value="shipped">Shipped</SelectItem>
                       <SelectItem value="delivered">Delivered</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -791,35 +549,42 @@ const Orders = () => {
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Payment</h3>
                   <p className={`font-medium capitalize ${
-                    selectedOrder.payment === "completed" 
+                    selectedOrder.status === "delivered" || selectedOrder.status === "shipped" 
                       ? "text-green-600" 
-                      : selectedOrder.payment === "pending"
+                      : selectedOrder.status === "pending" || selectedOrder.status === "processing"
                       ? "text-yellow-600"
                       : "text-red-600"
                   }`}>
-                    {selectedOrder.payment}
+                    {selectedOrder.status === "cancelled" ? "failed" : 
+                     (selectedOrder.status === "delivered" || selectedOrder.status === "shipped") ? "completed" : "pending"}
                   </p>
                 </div>
               </div>
               
-              {selectedOrder.trackingNumber && (
+              {selectedOrder.payment_intent_id && (
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Tracking Number</h3>
-                  <p className="font-medium">{selectedOrder.trackingNumber}</p>
+                  <h3 className="text-sm font-medium text-muted-foreground">Payment Details</h3>
+                  <p className="font-medium font-mono text-xs">{selectedOrder.payment_intent_id}</p>
                 </div>
               )}
               
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Shipping Address</h3>
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <p className="font-medium">{selectedOrder.shippingAddress.name}</p>
-                  <p className="break-words">{selectedOrder.shippingAddress.address}</p>
-                  <p>
-                    {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.postalCode}
-                  </p>
-                  <p>{selectedOrder.shippingAddress.country}</p>
+              {selectedOrder.shipping_address && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Shipping Address</h3>
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    {typeof selectedOrder.shipping_address === 'object' && selectedOrder.shipping_address !== null && (
+                      <>
+                        <p className="font-medium">{(selectedOrder.shipping_address as any).name || selectedOrder.customer.name}</p>
+                        <p className="break-words">{(selectedOrder.shipping_address as any).address || 'Address not provided'}</p>
+                        <p>
+                          {(selectedOrder.shipping_address as any).city || ''}, {(selectedOrder.shipping_address as any).state || ''} {(selectedOrder.shipping_address as any).postalCode || ''}
+                        </p>
+                        <p>{(selectedOrder.shipping_address as any).country || ''}</p>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
               
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Order Items</h3>
@@ -834,17 +599,29 @@ const Orders = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {selectedOrder.items.map((item: any) => (
+                      {selectedOrder.items.map((item) => (
                         <TableRow key={item.id}>
-                          <TableCell className="max-w-[150px] truncate">{item.name}</TableCell>
+                          <TableCell className="max-w-[150px] truncate">{item.product_name}</TableCell>
                           <TableCell className="text-right">{item.quantity}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.price * item.quantity)}</TableCell>
+                          <TableCell className="text-right">{formatCedis(item.price)}</TableCell>
+                          <TableCell className="text-right">{formatCedis(item.price * item.quantity)}</TableCell>
                         </TableRow>
                       ))}
+                      {selectedOrder.shipping_fee > 0 && (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-right">Shipping</TableCell>
+                          <TableCell className="text-right">{formatCedis(selectedOrder.shipping_fee)}</TableCell>
+                        </TableRow>
+                      )}
+                      {selectedOrder.tax > 0 && (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-right">Tax</TableCell>
+                          <TableCell className="text-right">{formatCedis(selectedOrder.tax)}</TableCell>
+                        </TableRow>
+                      )}
                       <TableRow>
                         <TableCell colSpan={3} className="text-right font-medium">Total</TableCell>
-                        <TableCell className="text-right font-bold">{formatCurrency(selectedOrder.total)}</TableCell>
+                        <TableCell className="text-right font-bold">{formatCedis(selectedOrder.total)}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -854,6 +631,24 @@ const Orders = () => {
           )}
           <DialogFooter className="flex-col sm:flex-row gap-2 mt-6">
             {selectedOrder && selectedOrder.status === "pending" && (
+              <>
+                <Button 
+                  variant="default" 
+                  className="w-full sm:w-auto"
+                  onClick={() => updateOrderStatus(selectedOrder.id, "processing")}
+                >
+                  Mark as Processing
+                </Button>
+                <Button 
+                  variant="default" 
+                  className="w-full sm:w-auto"
+                  onClick={() => updateOrderStatus(selectedOrder.id, "shipped")}
+                >
+                  Mark as Shipped
+                </Button>
+              </>
+            )}
+            {selectedOrder && selectedOrder.status === "processing" && (
               <Button 
                 variant="default" 
                 className="w-full sm:w-auto"
