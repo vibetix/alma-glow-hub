@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { DashboardSummary } from "@/components/admin/DashboardSummary";
@@ -10,8 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-// Define the props that DashboardSummary expects
-interface DashboardSummaryProps {
+export interface DashboardSummaryProps {
   userCount: number;
   orderCount: number;
   appointmentCount: number;
@@ -22,18 +20,17 @@ const Dashboard = () => {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<DashboardSummaryProps>({
-    totalUsers: 0,
-    totalOrders: 0,
-    totalAppointments: 0,
-    totalProducts: 0,
-  } as unknown as DashboardSummaryProps);
+    userCount: 0,
+    orderCount: 0,
+    appointmentCount: 0,
+    productCount: 0,
+  });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         
-        // Fetch counts in parallel
         const [
           { count: usersCount, error: usersError },
           { count: ordersCount, error: ordersError },
@@ -46,7 +43,6 @@ const Dashboard = () => {
           supabase.from('products').select('id', { count: 'exact', head: true })
         ]);
         
-        // Check for any errors
         if (usersError || ordersError || appointmentsError || productsError) {
           throw new Error('Failed to fetch dashboard data');
         }

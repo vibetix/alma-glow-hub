@@ -1,343 +1,243 @@
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle,
-  DialogFooter
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Search, UserPlus, Edit, Trash, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import { MoreVertical, Edit, Copy, UserX, UserCog } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Profile } from "@/types/database";
-import { format } from 'date-fns';
-import { toast } from '@/hooks/use-toast';
 
-interface UserWithDetails extends Profile {
-  last_sign_in_at?: string;
+interface UserWithDetails {
+  id: string;
+  email: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  profile: {
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
+    role: 'admin' | 'staff' | 'user';
+  }
 }
 
 const Users = () => {
   const [users, setUsers] = useState<UserWithDetails[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+          
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*');
+        
+        if (profilesError) {
+          throw profilesError;
+        }
+        
+        // Fetch users with profiles
+        const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
+        
+        if (usersError) {
+          throw usersError;
+        }
+        
+        // Map profiles to users
+        const usersWithDetails: UserWithDetails[] = usersData.users.map(user => {
+          const userProfile = profilesData?.find(profile => profile.id === user.id);
+          return {
+            id: user.id,
+            email: user.email || '',
+            created_at: user.created_at || '',
+            last_sign_in_at: user.last_sign_in_at,
+            profile: {
+              first_name: userProfile?.first_name || null,
+              last_name: userProfile?.last_name || null,
+              phone: userProfile?.phone || null,
+              role: (userProfile?.role as 'admin' | 'staff' | 'user') || 'user'
+            }
+          };
+        });
+        
+        setUsers(usersWithDetails);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        toast({
+          title: "Failed to load users",
+          description: "There was an error loading the user list",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
+  const handleChangeRole = async (userId: string, newRole: 'admin' | 'staff' | 'user') => {
     try {
-      setLoading(true);
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const confirmChange = window.confirm(`Are you sure you want to change the role for user ${userId} to ${newRole}?`);
+      if (!confirmChange) {
+        return;
+      }
         
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          role: newRole,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', userId);
+      
       if (error) {
         throw error;
       }
       
-      setUsers(data || []);
-    } catch (err) {
-      console.error('Error fetching users:', err);
+      // Update local state
+      setUsers(prev => 
+        prev.map(user => 
+          user.id === userId 
+            ? { ...user, profile: { ...user.profile, role: newRole } } 
+            : user
+        )
+      );
+      
       toast({
-        title: "Failed to load users",
-        description: "There was an error loading the user list",
-        variant: "destructive",
+        title: "Role updated",
+        description: `User ${userId} role updated to ${newRole}`,
       });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Filter users based on search term
-  const filteredUsers = users.filter(
-    (user) =>
-      (user.first_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (user.last_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleAddUser = () => {
-    setCurrentUser(null);
-    setIsDialogOpen(true);
-  };
-
-  const handleEditUser = (user: UserWithDetails) => {
-    setCurrentUser(user);
-    setIsDialogOpen(true);
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      try {
-        const { error } = await supabase
-          .from('profiles')
-          .delete()
-          .eq('id', userId);
-          
-        if (error) {
-          throw error;
-        }
-        
-        // Remove the user from the local state
-        setUsers(users.filter(user => user.id !== userId));
-        
-        toast({
-          title: "User deleted",
-          description: "The user has been successfully deleted",
-        });
-      } catch (err) {
-        console.error('Error deleting user:', err);
-        toast({
-          title: "Failed to delete user",
-          description: "There was an error deleting the user",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  const handleDialogSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    
-    try {
-      // Extract form values
-      const firstName = (form.elements.namedItem('first_name') as HTMLInputElement).value;
-      const lastName = (form.elements.namedItem('last_name') as HTMLInputElement).value;
-      const phone = (form.elements.namedItem('phone') as HTMLInputElement).value;
-      const role = (form.elements.namedItem('role') as HTMLSelectElement).value as 'admin' | 'staff' | 'user';
-      
-      if (currentUser) {
-        // Update existing user
-        const updateData = {
-          first_name: firstName,
-          last_name: lastName,
-          phone,
-          role,
-          updated_at: new Date().toISOString()
-        };
-        
-        const { error } = await supabase
-          .from('profiles')
-          .update(updateData)
-          .eq('id', currentUser.id);
-          
-        if (error) {
-          throw error;
-        }
-        
-        // Update the user in the local state
-        setUsers(users.map(u => 
-          u.id === currentUser.id 
-            ? { ...u, first_name: firstName, last_name: lastName, phone, role } 
-            : u
-        ));
-        
-        toast({
-          title: "User updated",
-          description: "The user has been successfully updated",
-        });
-      } else {
-        // For adding a new user, we would need to create both auth user and profile
-        // Since we can't create auth users directly from the client, we'd need a server function
-        // For this example, we'll show a message
-        toast({
-          title: "Feature not available",
-          description: "Creating users directly is not implemented in this demo",
-          variant: "destructive",
-        });
-      }
-      
-      setIsDialogOpen(false);
-    } catch (err) {
-      console.error('Error submitting user form:', err);
+    } catch (error) {
+      console.error("Error updating role:", error);
       toast({
-        title: "Failed to save user",
-        description: "There was an error saving the user data",
+        title: "Failed to update role",
+        description: "There was an error updating the user's role",
         variant: "destructive",
       });
     }
   };
-
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'MMM dd, yyyy');
-    } catch (e) {
-      return 'Never';
-    }
-  };
-
+  
   return (
     <AdminLayout title="User Management">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-          <Input
-            placeholder="Search users..."
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <Button onClick={handleAddUser}>
-          <UserPlus size={18} className="mr-2" />
-          Add User
-        </Button>
-      </div>
-
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {loading ? (
-          <div className="p-8 flex justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-alma-gold" />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">
-                      {user.first_name} {user.last_name}
-                    </TableCell>
-                    <TableCell className="capitalize">{user.role}</TableCell>
-                    <TableCell>{user.phone || "Not provided"}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800`}
-                      >
-                        Active
-                      </span>
-                    </TableCell>
-                    <TableCell>{formatDate(user.created_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditUser(user)}
-                        >
-                          <Edit size={16} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash size={16} />
-                        </Button>
-                      </div>
-                    </TableCell>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Users</CardTitle>
+            <CardDescription>
+              Manage users and assign roles
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                    {searchTerm 
-                      ? "No users found matching your search." 
-                      : "No users found. Add some users to get started."}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{currentUser ? "Edit User" : "Add New User"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleDialogSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">First Name</Label>
-                <Input
-                  id="first_name"
-                  name="first_name"
-                  placeholder="Enter first name"
-                  defaultValue={currentUser?.first_name || ""}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="last_name">Last Name</Label>
-                <Input
-                  id="last_name"
-                  name="last_name"
-                  placeholder="Enter last name"
-                  defaultValue={currentUser?.last_name || ""}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  placeholder="Enter phone number"
-                  defaultValue={currentUser?.phone || ""}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <select
-                  id="role"
-                  name="role"
-                  className="w-full border border-gray-300 rounded-md h-10 px-3"
-                  defaultValue={currentUser?.role || "user"}
-                >
-                  <option value="user">Customer</option>
-                  <option value="admin">Admin</option>
-                  <option value="staff">Staff</option>
-                </select>
-              </div>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6">
+                        Loading...
+                      </TableCell>
+                    </TableRow>
+                  ) : users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6">
+                        No users found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {user.profile.first_name} {user.profile.last_name}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <UserCog className="h-4 w-4 mr-2 text-muted-foreground" />
+                            <span>{user.profile.role}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(user.created_at), "MMM d, yyyy")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Copy className="mr-2 h-4 w-4" /> Copy
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleChangeRole(user.id, user.profile.role === 'user' ? 'admin' : 'user')}
+                              >
+                                <UserX className="mr-2 h-4 w-4" />
+                                {user.profile.role === 'user' ? 'Make Admin' : 'Make User'}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">
-                {currentUser ? "Save Changes" : "Add User"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
+      </div>
     </AdminLayout>
   );
 };

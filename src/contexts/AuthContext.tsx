@@ -1,7 +1,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import { toast } from '@/hooks/use-toast';
 import { Profile } from '@/types/database';
 
@@ -10,6 +10,7 @@ type AuthUser = {
   id: string;
   email?: string;
   name?: string;
+  role?: 'admin' | 'staff' | 'user';
 }
 
 type AuthContextType = {
@@ -17,8 +18,8 @@ type AuthContextType = {
   profile: Profile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>;
+  signup: (email: string, password: string, firstName: string, lastName: string) => Promise<boolean>;
   logout: () => Promise<void>;
 };
 
@@ -94,14 +95,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
 
-      setProfile(data);
+      if (data) {
+        // Ensure role is cast to the proper type
+        const profileData: Profile = {
+          ...data,
+          role: data.role as 'admin' | 'staff' | 'user'
+        };
+        
+        setProfile(profileData);
+        
+        // Update user object with role from profile
+        setUser(prev => prev ? { ...prev, role: profileData.role } : null);
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
       setProfile(null);
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -115,20 +127,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: "Welcome back!",
       });
 
-      return data;
+      return true;
     } catch (error: any) {
       toast({
         title: "Login failed",
         description: error.message || "There was an error logging in",
         variant: "destructive",
       });
-      throw error;
+      return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const signup = async (email: string, password: string, firstName: string, lastName: string) => {
+  const signup = async (email: string, password: string, firstName: string, lastName: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase.auth.signUp({
@@ -151,14 +163,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: "Welcome to Alma Salon & Spa!",
       });
 
-      return data;
+      return true;
     } catch (error: any) {
       toast({
         title: "Sign up failed",
         description: error.message || "There was an error creating your account",
         variant: "destructive",
       });
-      throw error;
+      return false;
     } finally {
       setIsLoading(false);
     }

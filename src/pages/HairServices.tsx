@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ServiceLayout } from '@/components/ServiceLayout';
-import { ServiceDetails, ServiceItem } from '@/components/ServiceDetails';
+import { ServiceDetails } from '@/components/ServiceDetails';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { ArrowUpRight } from 'lucide-react';

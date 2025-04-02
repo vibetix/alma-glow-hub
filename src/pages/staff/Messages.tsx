@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { StaffLayout } from "@/components/StaffLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +26,6 @@ const Messages = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Fetch conversations (unique users who have exchanged messages with the current user)
   useEffect(() => {
     const fetchConversations = async () => {
       if (!user) return;
@@ -35,7 +33,6 @@ const Messages = () => {
       try {
         setLoading(true);
         
-        // Get unique profiles that the current user has exchanged messages with
         const { data: sentMessagesData, error: sentError } = await supabase
           .from('messages')
           .select('recipient_id')
@@ -50,22 +47,18 @@ const Messages = () => {
           throw new Error('Failed to fetch conversations');
         }
         
-        // Combine unique user IDs
         const sentMessages = sentMessagesData as { recipient_id: string }[];
         const receivedMessages = receivedMessagesData as { sender_id: string }[];
         
-        // Combine unique user IDs
         const uniqueUserIds = new Set([
           ...(sentMessages?.map(msg => msg.recipient_id) || []),
           ...(receivedMessages?.map(msg => msg.sender_id) || [])
         ]);
         
-        // Filter out the current user's ID
         const otherUserIds = Array.from(uniqueUserIds).filter(id => id !== user.id);
         
-        // Fetch profiles for these users
         if (otherUserIds.length > 0) {
-          const { data: profiles, error: profilesError } = await supabase
+          const { data: profilesData, error: profilesError } = await supabase
             .from('profiles')
             .select('*')
             .in('id', otherUserIds);
@@ -74,11 +67,17 @@ const Messages = () => {
             throw profilesError;
           }
           
-          setConversations(profiles || []);
-          
-          // If there are conversations, select the first one
-          if (profiles && profiles.length > 0) {
-            setSelectedProfile(profiles[0]);
+          if (profilesData) {
+            const typedProfiles = profilesData.map(profile => ({
+              ...profile,
+              role: profile.role as 'admin' | 'staff' | 'user'
+            }));
+            
+            setConversations(typedProfiles);
+            
+            if (typedProfiles.length > 0) {
+              setSelectedProfile(typedProfiles[0]);
+            }
           }
         }
       } catch (error) {
@@ -96,7 +95,6 @@ const Messages = () => {
     fetchConversations();
   }, [user]);
   
-  // Fetch messages for the selected conversation
   useEffect(() => {
     const fetchMessages = async () => {
       if (!user || !selectedProfile) return;
@@ -106,7 +104,7 @@ const Messages = () => {
           .from('messages')
           .select(`
             *,
-            profiles:sender_id (*)
+            profiles!sender_id(*)
           `)
           .or(`and(sender_id.eq.${user.id},recipient_id.eq.${selectedProfile.id}),and(sender_id.eq.${selectedProfile.id},recipient_id.eq.${user.id})`)
           .order('created_at');
@@ -115,17 +113,19 @@ const Messages = () => {
           throw error;
         }
         
-        // Add an is_sender flag to each message
-        const messagesData = data as (Message & { profiles: Profile })[];
-        const formattedMessages = messagesData?.map(msg => ({
-          ...msg,
-          is_sender: msg.sender_id === user.id
-        })) || [];
-        
-        setMessages(formattedMessages);
-        
-        // Mark received messages as read
         if (data) {
+          const messagesData = data as any[];
+          const formattedMessages = messagesData?.map(msg => ({
+            ...msg,
+            profiles: {
+              ...msg.profiles,
+              role: msg.profiles.role as 'admin' | 'staff' | 'user'
+            },
+            is_sender: msg.sender_id === user.id
+          })) || [];
+          
+          setMessages(formattedMessages as ConversationWithProfile[]);
+          
           const unreadMessages = messagesData
             .filter(msg => msg.recipient_id === user.id && !msg.read);
             
@@ -146,7 +146,6 @@ const Messages = () => {
     fetchMessages();
   }, [user, selectedProfile]);
   
-  // Scroll to bottom whenever messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -176,7 +175,6 @@ const Messages = () => {
         throw error;
       }
       
-      // Add the new message to the UI optimistically
       const newMsg: ConversationWithProfile = {
         id: 'temp-' + Date.now(),
         sender_id: user.id,
@@ -216,7 +214,6 @@ const Messages = () => {
     }
   };
 
-  // Format time for message timestamp
   const formatMessageTime = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -226,7 +223,6 @@ const Messages = () => {
     }
   };
   
-  // Generate initials from name
   const getInitials = (profile: Profile) => {
     if (!profile) return '';
     const first = profile.first_name ? profile.first_name.charAt(0).toUpperCase() : '';
