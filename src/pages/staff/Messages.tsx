@@ -36,12 +36,12 @@ const Messages = () => {
         setLoading(true);
         
         // Get unique profiles that the current user has exchanged messages with
-        const { data: sentMessages, error: sentError } = await supabase
+        const { data: sentMessagesData, error: sentError } = await supabase
           .from('messages')
           .select('recipient_id')
           .eq('sender_id', user.id);
           
-        const { data: receivedMessages, error: receivedError } = await supabase
+        const { data: receivedMessagesData, error: receivedError } = await supabase
           .from('messages')
           .select('sender_id')
           .eq('recipient_id', user.id);
@@ -49,6 +49,10 @@ const Messages = () => {
         if (sentError || receivedError) {
           throw new Error('Failed to fetch conversations');
         }
+        
+        // Combine unique user IDs
+        const sentMessages = sentMessagesData as { recipient_id: string }[];
+        const receivedMessages = receivedMessagesData as { sender_id: string }[];
         
         // Combine unique user IDs
         const uniqueUserIds = new Set([
@@ -112,7 +116,8 @@ const Messages = () => {
         }
         
         // Add an is_sender flag to each message
-        const formattedMessages = data?.map(msg => ({
+        const messagesData = data as (Message & { profiles: Profile })[];
+        const formattedMessages = messagesData?.map(msg => ({
           ...msg,
           is_sender: msg.sender_id === user.id
         })) || [];
@@ -121,9 +126,10 @@ const Messages = () => {
         
         // Mark received messages as read
         if (data) {
-          const unreadMessageIds = data
-            .filter(msg => msg.recipient_id === user.id && !msg.read)
-            .map(msg => msg.id);
+          const unreadMessages = messagesData
+            .filter(msg => msg.recipient_id === user.id && !msg.read);
+            
+          const unreadMessageIds = unreadMessages.map(msg => msg.id);
             
           if (unreadMessageIds.length > 0) {
             await supabase
@@ -155,14 +161,16 @@ const Messages = () => {
     try {
       setSendingMessage(true);
       
+      const messageData = {
+        sender_id: user.id,
+        recipient_id: selectedProfile.id,
+        content: newMessage.trim(),
+        read: false
+      };
+      
       const { error } = await supabase
         .from('messages')
-        .insert({
-          sender_id: user.id,
-          recipient_id: selectedProfile.id,
-          content: newMessage.trim(),
-          read: false
-        });
+        .insert(messageData);
         
       if (error) {
         throw error;

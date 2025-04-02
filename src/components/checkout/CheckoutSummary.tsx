@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from '@/integrations/supabase/client';
+import { OrderItem, Product } from "@/types/database";
 
 interface CartItem {
   id: string;
@@ -19,6 +20,10 @@ interface CheckoutSummaryProps {
   shipping: number;
   total: number;
   orderId?: string;
+}
+
+interface OrderItemWithProduct extends OrderItem {
+  products?: Product;
 }
 
 export const CheckoutSummary = ({
@@ -43,7 +48,7 @@ export const CheckoutSummary = ({
           .from('order_items')
           .select(`
             id,
-            product_name as name,
+            product_name,
             price,
             quantity,
             products (
@@ -56,9 +61,9 @@ export const CheckoutSummary = ({
           throw error;
         }
         
-        const formattedItems = data.map(item => ({
+        const formattedItems = (data as OrderItemWithProduct[]).map(item => ({
           id: item.id,
-          name: item.name,
+          name: item.product_name,
           price: item.price,
           quantity: item.quantity,
           image: item.products?.image_url || '/placeholder.svg',

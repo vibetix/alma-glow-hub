@@ -127,15 +127,17 @@ const Users = () => {
       
       if (currentUser) {
         // Update existing user
+        const updateData = {
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+          role,
+          updated_at: new Date().toISOString()
+        };
+        
         const { error } = await supabase
           .from('profiles')
-          .update({
-            first_name: firstName,
-            last_name: lastName,
-            phone,
-            role,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', currentUser.id);
           
         if (error) {

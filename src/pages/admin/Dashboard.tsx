@@ -10,15 +10,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Define the props that DashboardSummary expects
+interface DashboardSummaryProps {
+  userCount: number;
+  orderCount: number;
+  appointmentCount: number;
+  productCount: number;
+}
+
 const Dashboard = () => {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState({
+  const [dashboardData, setDashboardData] = useState<DashboardSummaryProps>({
     totalUsers: 0,
     totalOrders: 0,
     totalAppointments: 0,
     totalProducts: 0,
-  });
+  } as unknown as DashboardSummaryProps);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -44,10 +52,10 @@ const Dashboard = () => {
         }
         
         setDashboardData({
-          totalUsers: usersCount || 0,
-          totalOrders: ordersCount || 0,
-          totalAppointments: appointmentsCount || 0,
-          totalProducts: productsCount || 0,
+          userCount: usersCount || 0,
+          orderCount: ordersCount || 0,
+          appointmentCount: appointmentsCount || 0,
+          productCount: productsCount || 0,
         });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -79,10 +87,10 @@ const Dashboard = () => {
         ) : (
           <>
             <DashboardSummary 
-              userCount={dashboardData.totalUsers} 
-              orderCount={dashboardData.totalOrders}
-              appointmentCount={dashboardData.totalAppointments}
-              productCount={dashboardData.totalProducts}
+              userCount={dashboardData.userCount} 
+              orderCount={dashboardData.orderCount}
+              appointmentCount={dashboardData.appointmentCount}
+              productCount={dashboardData.productCount}
             />
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

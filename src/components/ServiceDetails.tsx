@@ -5,15 +5,9 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import { Service } from '@/types/database';
 
-export interface ServiceItem {
-  id: string;
-  name: string;
-  description: string;
-  duration: string;
-  price: number;
-  image_url?: string;
-}
+export interface ServiceItem extends Service {}
 
 interface ServiceDetailsProps {
   category: string;
