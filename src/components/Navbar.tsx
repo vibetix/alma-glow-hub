@@ -1,11 +1,12 @@
 
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, ShoppingCart, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
+import { getDashboardLink, getProfileLink } from '@/utils/auth-navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -169,12 +170,12 @@ export const Navbar = () => {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to={getDashboardLink()}>
+                  <Link to={getDashboardLink(profile)}>
                     {profile?.role === 'admin' ? 'Admin Dashboard' : profile?.role === 'staff' ? 'Staff Dashboard' : 'My Dashboard'}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to={getProfileLink()}>Profile Settings</Link>
+                  <Link to={getProfileLink(profile)}>Profile Settings</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
@@ -232,7 +233,7 @@ export const Navbar = () => {
               {isAuthenticated ? (
                 <div className="flex flex-col space-y-3">
                   <Link
-                    to={getDashboardLink()}
+                    to={getDashboardLink(profile)}
                     className="flex items-center text-alma-darkGreen"
                   >
                     <User size={20} className="mr-2" /> 
