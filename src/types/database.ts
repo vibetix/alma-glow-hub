@@ -45,7 +45,7 @@ export interface Appointment {
   service_id: string | null;
   date: string;
   time: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: string; // Changed from strict literal types to accept any string
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -57,7 +57,7 @@ export interface Appointment {
 export interface Order {
   id: string;
   user_id: string | null;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: string; // Changed from strict literal types to accept any string
   total: number;
   shipping_fee: number;
   tax: number;
