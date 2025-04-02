@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { toast } from '@/hooks/use-toast';
 import { Profile } from '@/types/database';
+import { useNavigate } from 'react-router-dom';
 
 // Define types
 type AuthUser = {
@@ -31,6 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Check for existing session
   useEffect(() => {
@@ -82,6 +84,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Redirect based on user role
+  useEffect(() => {
+    if (profile && !isLoading) {
+      // Only redirect if on login page or landing page
+      const path = window.location.pathname;
+      if (path === '/login' || path === '/') {
+        switch (profile.role) {
+          case 'admin':
+            navigate('/admin');
+            break;
+          case 'staff':
+            navigate('/staff');
+            break;
+          case 'user':
+            navigate('/user/dashboard');
+            break;
+        }
+      }
+    }
+  }, [profile, isLoading, navigate]);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -192,6 +215,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         title: "Logged out",
         description: "You have been successfully logged out",
       });
+      
+      navigate('/login');
     } catch (error: any) {
       toast({
         title: "Logout failed",

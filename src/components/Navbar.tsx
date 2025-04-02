@@ -21,7 +21,7 @@ export const Navbar = () => {
   const [cartItemsCount, setCartItemsCount] = useState(0);
   const location = useLocation();
   const isMobile = useIsMobile();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, profile, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -76,7 +76,34 @@ export const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+  };
+
+  const getDashboardLink = () => {
+    if (!profile) return '/user/dashboard';
+    
+    switch (profile.role) {
+      case 'admin':
+        return '/admin';
+      case 'staff':
+        return '/staff';
+      case 'user':
+      default:
+        return '/user/dashboard';
+    }
+  };
+
+  const getProfileLink = () => {
+    if (!profile) return '/user/profile';
+    
+    switch (profile.role) {
+      case 'admin':
+        return '/admin/settings';
+      case 'staff':
+        return '/staff/settings';
+      case 'user':
+      default:
+        return '/user/profile';
+    }
   };
 
   return (
@@ -133,25 +160,21 @@ export const Navbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-alma-darkGreen hover:text-alma-gold">
                   <div className="w-6 h-6 rounded-full bg-alma-gold text-white flex items-center justify-center text-xs font-bold mr-2">
-                    {user?.name.charAt(0)}
+                    {user?.name?.charAt(0) || 'U'}
                   </div>
-                  <span className="max-w-[80px] truncate">{user?.name}</span>
+                  <span className="max-w-[80px] truncate">{user?.name || 'User'}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {user?.role === 'admin' ? (
-                  <DropdownMenuItem asChild>
-                    <Link to="/admin">Admin Dashboard</Link>
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem asChild>
-                    <Link to="/user/dashboard">My Dashboard</Link>
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuItem asChild>
-                  <Link to={user?.role === 'admin' ? "/admin/settings" : "/user/profile"}>Profile Settings</Link>
+                  <Link to={getDashboardLink()}>
+                    {profile?.role === 'admin' ? 'Admin Dashboard' : profile?.role === 'staff' ? 'Staff Dashboard' : 'My Dashboard'}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to={getProfileLink()}>Profile Settings</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
@@ -209,11 +232,11 @@ export const Navbar = () => {
               {isAuthenticated ? (
                 <div className="flex flex-col space-y-3">
                   <Link
-                    to={user?.role === 'admin' ? "/admin" : "/user/dashboard"}
+                    to={getDashboardLink()}
                     className="flex items-center text-alma-darkGreen"
                   >
                     <User size={20} className="mr-2" /> 
-                    {user?.role === 'admin' ? 'Admin Dashboard' : 'My Dashboard'}
+                    {profile?.role === 'admin' ? 'Admin Dashboard' : profile?.role === 'staff' ? 'Staff Dashboard' : 'My Dashboard'}
                   </Link>
                   <button
                     onClick={handleLogout}

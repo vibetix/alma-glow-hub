@@ -41,7 +41,7 @@ const Login = () => {
     try {
       const success = await login(values.email, values.password);
       if (success) {
-        navigate('/');
+        // We don't redirect here anymore as it will be handled by AuthContext
       }
     } finally {
       setIsSubmitting(false);
