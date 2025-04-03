@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,7 +28,8 @@ import Settings from "./pages/admin/Settings";
 import Orders from "./pages/admin/Orders";
 import Payments from "./pages/admin/Payments";
 import Staff from "./pages/admin/Staff";
-import TestUsers from "./pages/admin/TestUsers"; // Added for test users
+import TestUsers from "./pages/admin/TestUsers";
+import StaffManagement from "./pages/admin/StaffManagement";
 
 // User Pages
 import UserDashboard from "./pages/user/Dashboard";
@@ -247,6 +247,14 @@ const App = () => (
               element={
                 <ProtectedRoute adminOnly>
                   <TestUsers />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/create-staff" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <StaffManagement />
                 </ProtectedRoute>
               } 
             />
