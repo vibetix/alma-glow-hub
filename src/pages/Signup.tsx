@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageTransition } from '@/components/PageTransition';
 import { Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const signupSchema = z.object({
   firstName: z.string().min(2, { message: "First name must be at least 2 characters" }),
@@ -56,7 +57,17 @@ const Signup = () => {
       );
       
       if (success) {
+        toast({
+          title: "Account Created",
+          description: "Your user account has been successfully created.",
+        });
         navigate('/login');
+      } else {
+        toast({
+          title: "Signup Failed",
+          description: "Unable to create account. Please try again.",
+          variant: "destructive",
+        });
       }
     } finally {
       setIsSubmitting(false);

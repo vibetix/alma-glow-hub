@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageTransition } from '@/components/PageTransition';
 import { Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -24,7 +25,6 @@ const loginSchema = z.object({
 });
 
 const Login = () => {
-  const navigate = useNavigate();
   const { login, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -40,8 +40,13 @@ const Login = () => {
     setIsSubmitting(true);
     try {
       const success = await login(values.email, values.password);
-      if (success) {
-        // We don't redirect here anymore as it will be handled by AuthContext
+      
+      if (!success) {
+        toast({
+          title: "Login Failed",
+          description: "Invalid email or password.",
+          variant: "destructive",
+        });
       }
     } finally {
       setIsSubmitting(false);
