@@ -147,27 +147,27 @@ const Shop = () => {
     
     // Filter by price range
     result = result.filter(product => {
-      const price = product.isSale && product.salePrice 
-        ? product.salePrice 
-        : product.price;
+      const price = product.is_sale && product.sale_price 
+        ? Number(product.sale_price) 
+        : Number(product.price);
       return price >= priceRange[0] && price <= priceRange[1];
     });
     
     // Sort products
     if (sortBy === "price-asc") {
       result.sort((a, b) => {
-        const priceA = a.isSale && a.salePrice ? a.salePrice : a.price;
-        const priceB = b.isSale && b.salePrice ? b.salePrice : b.price;
+        const priceA = a.is_sale && a.sale_price ? Number(a.sale_price) : Number(a.price);
+        const priceB = b.is_sale && b.sale_price ? Number(b.sale_price) : Number(b.price);
         return priceA - priceB;
       });
     } else if (sortBy === "price-desc") {
       result.sort((a, b) => {
-        const priceA = a.isSale && a.salePrice ? a.salePrice : a.price;
-        const priceB = b.isSale && b.salePrice ? b.salePrice : b.price;
+        const priceA = a.is_sale && a.sale_price ? Number(a.sale_price) : Number(a.price);
+        const priceB = b.is_sale && b.sale_price ? Number(b.sale_price) : Number(b.price);
         return priceB - priceA;
       });
     } else if (sortBy === "new") {
-      result.sort((a, b) => (a.isNew === b.isNew) ? 0 : a.isNew ? -1 : 1);
+      result.sort((a, b) => (a.is_new === b.is_new) ? 0 : a.is_new ? -1 : 1);
     }
     
     setFilteredProducts(result);
@@ -181,7 +181,7 @@ const Shop = () => {
       searchTerm !== "" || 
       selectedCategory !== "All" || 
       priceRange[0] > 0 || 
-      priceRange[1] < (Math.max(...allProducts.map(p => p.price), 100)) ||
+      priceRange[1] < (Math.max(...allProducts.map(p => Number(p.price)), 100)) ||
       sortBy !== "recommended"
     );
   }, [searchTerm, selectedCategory, priceRange, sortBy, allProducts]);
@@ -197,7 +197,7 @@ const Shop = () => {
   const resetFilters = () => {
     setSearchTerm("");
     setSelectedCategory("All");
-    const maxPrice = Math.max(...allProducts.map(p => p.price), 100);
+    const maxPrice = Math.max(...allProducts.map(p => Number(p.price)), 100);
     setPriceRange([0, maxPrice]);
     setSortBy("recommended");
   };
@@ -314,7 +314,7 @@ const Shop = () => {
                     <h3 className="font-medium text-lg mb-4">Price Range</h3>
                     <Slider 
                       defaultValue={priceRange} 
-                      max={Math.max(...allProducts.map(p => p.price), 100)} 
+                      max={Math.max(...allProducts.map(p => Number(p.price)), 100)} 
                       step={1} 
                       value={priceRange}
                       onValueChange={setPriceRange}
@@ -396,7 +396,7 @@ const Shop = () => {
                             <div className="py-6 border-b">
                               <h3 className="font-medium text-lg mb-4">Price Range</h3>
                               <Slider 
-                                max={Math.max(...allProducts.map(p => p.price), 100)}
+                                max={Math.max(...allProducts.map(p => Number(p.price)), 100)}
                                 step={1} 
                                 value={priceRange}
                                 onValueChange={setPriceRange}
@@ -468,11 +468,11 @@ const Shop = () => {
                       </span>
                     )}
                     
-                    {(priceRange[0] > 0 || priceRange[1] < Math.max(...allProducts.map(p => p.price), 100)) && (
+                    {(priceRange[0] > 0 || priceRange[1] < Math.max(...allProducts.map(p => Number(p.price)), 100)) && (
                       <span className="text-xs bg-alma-lightgray px-3 py-1 rounded-full flex items-center">
                         Price: ₵{priceRange[0]} - ₵{priceRange[1]}
                         <button 
-                          onClick={() => setPriceRange([0, Math.max(...allProducts.map(p => p.price), 100)])} 
+                          onClick={() => setPriceRange([0, Math.max(...allProducts.map(p => Number(p.price)), 100)])} 
                           className="ml-2 text-gray-500 hover:text-black"
                         >
                           ×
@@ -519,7 +519,7 @@ const Shop = () => {
                           <ProductCard 
                             id={product.id}
                             name={product.name}
-                            price={product.price}
+                            price={Number(product.price)}
                             imageUrl={product.image_url || '/placeholder.svg'}
                             category={product.category}
                             isNew={product.is_new || false}
