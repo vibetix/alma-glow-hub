@@ -29,6 +29,7 @@ import Settings from "./pages/admin/Settings";
 import Orders from "./pages/admin/Orders";
 import Payments from "./pages/admin/Payments";
 import Staff from "./pages/admin/Staff";
+import TestUsers from "./pages/admin/TestUsers"; // Added for test users
 
 // User Pages
 import UserDashboard from "./pages/user/Dashboard";
@@ -238,6 +239,14 @@ const App = () => (
               element={
                 <ProtectedRoute adminOnly>
                   <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/test-users" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <TestUsers />
                 </ProtectedRoute>
               } 
             />

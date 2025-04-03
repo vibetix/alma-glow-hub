@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { SearchIcon, Filter, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -55,6 +54,7 @@ const Shop = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [noProductsExist, setNoProductsExist] = useState(false);
   
   // Fetch products from Supabase
   useEffect(() => {
@@ -70,24 +70,32 @@ const Shop = () => {
         }
         
         if (data) {
+          if (data.length === 0) {
+            setNoProductsExist(true);
+            setAllProducts([]);
+            setFilteredProducts([]);
+            return;
+          }
+          
           // Convert database products to frontend format
           const formattedProducts = data.map(product => ({
             ...product,
             id: product.id,
             name: product.name,
             price: Number(product.price),
-            salePrice: product.sale_price ? Number(product.sale_price) : undefined,
+            sale_price: product.sale_price ? Number(product.sale_price) : undefined,
             imageUrl: product.image_url || '/placeholder.svg',
             category: product.category,
-            isNew: product.is_new || false,
-            isSale: product.is_sale || false
+            is_new: product.is_new || false,
+            is_sale: product.is_sale || false
           }));
           
           setAllProducts(formattedProducts);
           setFilteredProducts(formattedProducts);
+          setNoProductsExist(false);
           
           // Get max price for price range slider
-          const maxPrice = Math.max(...formattedProducts.map(p => p.price), 100);
+          const maxPrice = Math.max(...formattedProducts.map(p => Number(p.price)), 100);
           setPriceRange([0, maxPrice]);
         }
       } catch (error) {
@@ -282,6 +290,11 @@ const Shop = () => {
             <div className="flex flex-col items-center justify-center py-32">
               <Loader2 className="h-12 w-12 animate-spin text-alma-gold mb-4" />
               <p className="text-lg text-gray-600">Loading products...</p>
+            </div>
+          ) : noProductsExist ? (
+            <div className="flex flex-col items-center justify-center py-32">
+              <h3 className="text-2xl font-medium mb-4">No products available</h3>
+              <p className="text-lg text-gray-600 mb-4">Our shop will be stocked soon!</p>
             </div>
           ) : (
             <div className="flex flex-col lg:flex-row gap-8">

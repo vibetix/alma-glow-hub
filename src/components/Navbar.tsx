@@ -75,8 +75,19 @@ export const Navbar = () => {
     { href: "/booking", label: "Book Now" },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsMenuOpen(false);
+      navigate('/');
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    return name.charAt(0).toUpperCase();
   };
 
   return (
@@ -133,13 +144,21 @@ export const Navbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-alma-darkGreen hover:text-alma-gold">
                   <div className="w-6 h-6 rounded-full bg-alma-gold text-white flex items-center justify-center text-xs font-bold mr-2">
-                    {user?.name?.charAt(0) || 'U'}
+                    {getInitials(user?.name)}
                   </div>
                   <span className="max-w-[80px] truncate">{user?.name || 'User'}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-alma-gold/80 text-white flex items-center justify-center text-xs font-bold">
+                    {getInitials(user?.name)}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{user?.name}</span>
+                    <span className="text-xs text-gray-500">{profile?.role}</span>
+                  </div>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to={getDashboardLink(profile)}>
@@ -149,8 +168,16 @@ export const Navbar = () => {
                 <DropdownMenuItem asChild>
                   <Link to={getProfileLink(profile)}>Profile Settings</Link>
                 </DropdownMenuItem>
+                {profile?.role === 'admin' && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin/test-users">Create Test Users</Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
+                <DropdownMenuItem 
+                  onClick={handleLogout}
+                  className="text-red-500 focus:text-red-500 focus:bg-red-50 cursor-pointer"
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Logout</span>
                 </DropdownMenuItem>
@@ -204,6 +231,13 @@ export const Navbar = () => {
               
               {isAuthenticated ? (
                 <div className="flex flex-col space-y-3">
+                  <div className="flex items-center">
+                    <div className="w-6 h-6 rounded-full bg-alma-gold text-white flex items-center justify-center text-xs font-bold mr-2">
+                      {getInitials(user?.name)}
+                    </div>
+                    <span>{user?.name || 'User'}</span>
+                    <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded-full">{profile?.role}</span>
+                  </div>
                   <Link
                     to={getDashboardLink(profile)}
                     className="flex items-center text-alma-darkGreen"
