@@ -10,6 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { Product } from '@/types/database';
+import { toast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 import { 
   Pagination,
   PaginationContent,
@@ -35,14 +39,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { sampleProducts } from '@/data/products';
 
 const categories = ["All", "Skin Care", "Hair Care", "Bath & Body", "Tools"];
 const ITEMS_PER_PAGE = 6;
 
 const Shop = () => {
-  const [products, setProducts] = useState(sampleProducts);
-  const [filteredProducts, setFilteredProducts] = useState(sampleProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [priceRange, setPriceRange] = useState([0, 100]);
@@ -50,10 +54,82 @@ const Shop = () => {
   const [isFiltered, setIsFiltered] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Fetch products from Supabase
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('products')
+          .select('*');
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          // Convert database products to frontend format
+          const formattedProducts = data.map(product => ({
+            ...product,
+            id: product.id,
+            name: product.name,
+            price: Number(product.price),
+            salePrice: product.sale_price ? Number(product.sale_price) : undefined,
+            imageUrl: product.image_url || '/placeholder.svg',
+            category: product.category,
+            isNew: product.is_new || false,
+            isSale: product.is_sale || false
+          }));
+          
+          setAllProducts(formattedProducts);
+          setFilteredProducts(formattedProducts);
+          
+          // Get max price for price range slider
+          const maxPrice = Math.max(...formattedProducts.map(p => p.price), 100);
+          setPriceRange([0, maxPrice]);
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        toast({
+          title: "Error loading products",
+          description: "Please refresh the page or try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+    
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('products-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'products' 
+        }, 
+        (payload) => {
+          console.log('Realtime update:', payload);
+          fetchProducts(); // Refresh products when there's a change
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
   
   // Filter and sort products
   useEffect(() => {
-    let result = [...sampleProducts];
+    if (allProducts.length === 0) return;
+    
+    let result = [...allProducts];
     
     // Filter by search term
     if (searchTerm) {
@@ -95,7 +171,7 @@ const Shop = () => {
     }
     
     setFilteredProducts(result);
-    setTotalPages(Math.ceil(result.length / ITEMS_PER_PAGE));
+    setTotalPages(Math.max(1, Math.ceil(result.length / ITEMS_PER_PAGE)));
     
     // Reset to first page when filters change
     setCurrentPage(1);
@@ -105,10 +181,10 @@ const Shop = () => {
       searchTerm !== "" || 
       selectedCategory !== "All" || 
       priceRange[0] > 0 || 
-      priceRange[1] < 100 ||
+      priceRange[1] < (Math.max(...allProducts.map(p => p.price), 100)) ||
       sortBy !== "recommended"
     );
-  }, [searchTerm, selectedCategory, priceRange, sortBy]);
+  }, [searchTerm, selectedCategory, priceRange, sortBy, allProducts]);
   
   // Get current page items
   useEffect(() => {
@@ -121,7 +197,8 @@ const Shop = () => {
   const resetFilters = () => {
     setSearchTerm("");
     setSelectedCategory("All");
-    setPriceRange([0, 100]);
+    const maxPrice = Math.max(...allProducts.map(p => p.price), 100);
+    setPriceRange([0, maxPrice]);
     setSortBy("recommended");
   };
   
@@ -201,264 +278,279 @@ const Shop = () => {
       {/* Shop Content */}
       <section className="py-16">
         <div className="container-custom">
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Sidebar - Desktop Filter */}
-            <div className="hidden lg:block w-64 flex-shrink-0">
-              <div className="sticky top-24">
-                <div className="pb-6 border-b">
-                  <h3 className="font-medium text-lg mb-4">Categories</h3>
-                  <div className="space-y-2">
-                    {categories.map((category) => (
-                      <div key={category} className="flex items-center">
-                        <Checkbox 
-                          id={`category-${category}`}
-                          checked={selectedCategory === category}
-                          onCheckedChange={() => setSelectedCategory(category)}
-                          className="text-alma-gold"
-                        />
-                        <Label 
-                          htmlFor={`category-${category}`}
-                          className="ml-2 cursor-pointer"
-                        >
-                          {category}
-                        </Label>
-                      </div>
-                    ))}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-32">
+              <Loader2 className="h-12 w-12 animate-spin text-alma-gold mb-4" />
+              <p className="text-lg text-gray-600">Loading products...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col lg:flex-row gap-8">
+              {/* Sidebar - Desktop Filter */}
+              <div className="hidden lg:block w-64 flex-shrink-0">
+                <div className="sticky top-24">
+                  <div className="pb-6 border-b">
+                    <h3 className="font-medium text-lg mb-4">Categories</h3>
+                    <div className="space-y-2">
+                      {categories.map((category) => (
+                        <div key={category} className="flex items-center">
+                          <Checkbox 
+                            id={`category-${category}`}
+                            checked={selectedCategory === category}
+                            onCheckedChange={() => setSelectedCategory(category)}
+                            className="text-alma-gold"
+                          />
+                          <Label 
+                            htmlFor={`category-${category}`}
+                            className="ml-2 cursor-pointer"
+                          >
+                            {category}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="py-6 border-b">
+                    <h3 className="font-medium text-lg mb-4">Price Range</h3>
+                    <Slider 
+                      defaultValue={priceRange} 
+                      max={Math.max(...allProducts.map(p => p.price), 100)} 
+                      step={1} 
+                      value={priceRange}
+                      onValueChange={setPriceRange}
+                      className="mt-6 mb-4"
+                    />
+                    <div className="flex justify-between text-sm">
+                      <span>₵{priceRange[0]}</span>
+                      <span>₵{priceRange[1]}</span>
+                    </div>
+                  </div>
+                  
+                  {isFiltered && (
+                    <Button 
+                      variant="outline" 
+                      className="mt-6 w-full border-alma-gold text-alma-gold hover:bg-alma-gold/10"
+                      onClick={resetFilters}
+                    >
+                      Reset Filters
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              {/* Main Content */}
+              <div className="flex-1">
+                {/* Search and Filter Controls */}
+                <div className="flex flex-col md:flex-row gap-4 mb-8">
+                  <div className="relative flex-1">
+                    <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <Input 
+                      type="search" 
+                      placeholder="Search products..." 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    {/* Mobile Filter */}
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <Button variant="outline" className="lg:hidden">
+                          <Filter size={18} className="mr-2" />
+                          Filters
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent side="right">
+                        <SheetHeader>
+                          <SheetTitle>Filter Products</SheetTitle>
+                          <SheetDescription>
+                            Refine your product selection
+                          </SheetDescription>
+                        </SheetHeader>
+                        
+                        <div className="py-4 h-full flex flex-col">
+                          <div className="flex-1 overflow-auto pr-2">
+                            <div className="pb-6 border-b">
+                              <h3 className="font-medium text-lg mb-4">Categories</h3>
+                              <div className="space-y-3">
+                                {categories.map((category) => (
+                                  <div key={category} className="flex items-center">
+                                    <Checkbox 
+                                      id={`mobile-category-${category}`}
+                                      checked={selectedCategory === category}
+                                      onCheckedChange={() => setSelectedCategory(category)}
+                                    />
+                                    <Label 
+                                      htmlFor={`mobile-category-${category}`}
+                                      className="ml-2 cursor-pointer"
+                                    >
+                                      {category}
+                                    </Label>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            <div className="py-6 border-b">
+                              <h3 className="font-medium text-lg mb-4">Price Range</h3>
+                              <Slider 
+                                max={Math.max(...allProducts.map(p => p.price), 100)}
+                                step={1} 
+                                value={priceRange}
+                                onValueChange={setPriceRange}
+                                className="mt-6 mb-4"
+                              />
+                              <div className="flex justify-between text-sm">
+                                <span>₵{priceRange[0]}</span>
+                                <span>₵{priceRange[1]}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <SheetFooter className="pt-4 border-t">
+                            <SheetClose asChild>
+                              <Button 
+                                type="submit" 
+                                className="w-full bg-alma-gold text-black hover:bg-opacity-90"
+                              >
+                                Apply Filters
+                              </Button>
+                            </SheetClose>
+                            
+                            {isFiltered && (
+                              <Button 
+                                variant="outline" 
+                                className="w-full mt-2"
+                                onClick={resetFilters}
+                              >
+                                Reset Filters
+                              </Button>
+                            )}
+                          </SheetFooter>
+                        </div>
+                      </SheetContent>
+                    </Sheet>
+                    
+                    {/* Sort Dropdown */}
+                    <Select 
+                      value={sortBy} 
+                      onValueChange={setSortBy}
+                    >
+                      <SelectTrigger className="min-w-[180px]">
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="recommended">Recommended</SelectItem>
+                        <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                        <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                        <SelectItem value="new">Newest First</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 
-                <div className="py-6 border-b">
-                  <h3 className="font-medium text-lg mb-4">Price Range</h3>
-                  <Slider 
-                    defaultValue={[0, 100]} 
-                    max={100} 
-                    step={1} 
-                    value={priceRange}
-                    onValueChange={setPriceRange}
-                    className="mt-6 mb-4"
-                  />
-                  <div className="flex justify-between text-sm">
-                    <span>${priceRange[0]}</span>
-                    <span>${priceRange[1]}</span>
-                  </div>
-                </div>
-                
+                {/* Active Filters */}
                 {isFiltered && (
-                  <Button 
-                    variant="outline" 
-                    className="mt-6 w-full border-alma-gold text-alma-gold hover:bg-alma-gold/10"
-                    onClick={resetFilters}
-                  >
-                    Reset Filters
-                  </Button>
+                  <div className="mb-6 flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium">Active Filters:</span>
+                    
+                    {selectedCategory !== "All" && (
+                      <span className="text-xs bg-alma-lightgray px-3 py-1 rounded-full flex items-center">
+                        Category: {selectedCategory}
+                        <button 
+                          onClick={() => setSelectedCategory("All")} 
+                          className="ml-2 text-gray-500 hover:text-black"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    )}
+                    
+                    {(priceRange[0] > 0 || priceRange[1] < Math.max(...allProducts.map(p => p.price), 100)) && (
+                      <span className="text-xs bg-alma-lightgray px-3 py-1 rounded-full flex items-center">
+                        Price: ₵{priceRange[0]} - ₵{priceRange[1]}
+                        <button 
+                          onClick={() => setPriceRange([0, Math.max(...allProducts.map(p => p.price), 100)])} 
+                          className="ml-2 text-gray-500 hover:text-black"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    )}
+                    
+                    {sortBy !== "recommended" && (
+                      <span className="text-xs bg-alma-lightgray px-3 py-1 rounded-full flex items-center">
+                        Sort: {sortBy === "price-asc" 
+                          ? "Price: Low to High" 
+                          : sortBy === "price-desc" 
+                          ? "Price: High to Low" 
+                          : "Newest First"}
+                        <button 
+                          onClick={() => setSortBy("recommended")} 
+                          className="ml-2 text-gray-500 hover:text-black"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    )}
+                    
+                    <button 
+                      onClick={resetFilters}
+                      className="text-xs text-alma-gold hover:underline ml-2"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                )}
+                
+                {/* Products Grid */}
+                {products.length > 0 ? (
+                  <>
+                    <motion.div 
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                      variants={staggeredAnimation}
+                      initial="hidden"
+                      animate="visible"
+                    >
+                      {products.map((product) => (
+                        <motion.div key={product.id} variants={fadeInUp}>
+                          <ProductCard 
+                            id={product.id}
+                            name={product.name}
+                            price={product.price}
+                            imageUrl={product.image_url || '/placeholder.svg'}
+                            category={product.category}
+                            isNew={product.is_new || false}
+                            isSale={product.is_sale || false}
+                            salePrice={product.sale_price ? Number(product.sale_price) : undefined}
+                          />
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                    
+                    {/* Pagination */}
+                    {renderPagination()}
+                  </>
+                ) : (
+                  <div className="py-12 text-center">
+                    <h3 className="text-xl font-medium mb-2">No products found</h3>
+                    <p className="text-gray-600 mb-6">
+                      We couldn't find any products matching your criteria.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      onClick={resetFilters}
+                      className="border-alma-gold text-alma-gold hover:bg-alma-gold/10"
+                    >
+                      Reset Filters
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
-            
-            {/* Main Content */}
-            <div className="flex-1">
-              {/* Search and Filter Controls */}
-              <div className="flex flex-col md:flex-row gap-4 mb-8">
-                <div className="relative flex-1">
-                  <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <Input 
-                    type="search" 
-                    placeholder="Search products..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                
-                <div className="flex gap-2">
-                  {/* Mobile Filter */}
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="outline" className="lg:hidden">
-                        <Filter size={18} className="mr-2" />
-                        Filters
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="right">
-                      <SheetHeader>
-                        <SheetTitle>Filter Products</SheetTitle>
-                        <SheetDescription>
-                          Refine your product selection
-                        </SheetDescription>
-                      </SheetHeader>
-                      
-                      <div className="py-4 h-full flex flex-col">
-                        <div className="flex-1 overflow-auto pr-2">
-                          <div className="pb-6 border-b">
-                            <h3 className="font-medium text-lg mb-4">Categories</h3>
-                            <div className="space-y-3">
-                              {categories.map((category) => (
-                                <div key={category} className="flex items-center">
-                                  <Checkbox 
-                                    id={`mobile-category-${category}`}
-                                    checked={selectedCategory === category}
-                                    onCheckedChange={() => setSelectedCategory(category)}
-                                  />
-                                  <Label 
-                                    htmlFor={`mobile-category-${category}`}
-                                    className="ml-2 cursor-pointer"
-                                  >
-                                    {category}
-                                  </Label>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          
-                          <div className="py-6 border-b">
-                            <h3 className="font-medium text-lg mb-4">Price Range</h3>
-                            <Slider 
-                              defaultValue={[0, 100]} 
-                              max={100} 
-                              step={1} 
-                              value={priceRange}
-                              onValueChange={setPriceRange}
-                              className="mt-6 mb-4"
-                            />
-                            <div className="flex justify-between text-sm">
-                              <span>${priceRange[0]}</span>
-                              <span>${priceRange[1]}</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <SheetFooter className="pt-4 border-t">
-                          <SheetClose asChild>
-                            <Button 
-                              type="submit" 
-                              className="w-full bg-alma-gold text-black hover:bg-opacity-90"
-                            >
-                              Apply Filters
-                            </Button>
-                          </SheetClose>
-                          
-                          {isFiltered && (
-                            <Button 
-                              variant="outline" 
-                              className="w-full mt-2"
-                              onClick={resetFilters}
-                            >
-                              Reset Filters
-                            </Button>
-                          )}
-                        </SheetFooter>
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-                  
-                  {/* Sort Dropdown */}
-                  <Select 
-                    value={sortBy} 
-                    onValueChange={setSortBy}
-                  >
-                    <SelectTrigger className="min-w-[180px]">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="recommended">Recommended</SelectItem>
-                      <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                      <SelectItem value="price-desc">Price: High to Low</SelectItem>
-                      <SelectItem value="new">Newest First</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              {/* Active Filters */}
-              {isFiltered && (
-                <div className="mb-6 flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium">Active Filters:</span>
-                  
-                  {selectedCategory !== "All" && (
-                    <span className="text-xs bg-alma-lightgray px-3 py-1 rounded-full flex items-center">
-                      Category: {selectedCategory}
-                      <button 
-                        onClick={() => setSelectedCategory("All")} 
-                        className="ml-2 text-gray-500 hover:text-black"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
-                  
-                  {(priceRange[0] > 0 || priceRange[1] < 100) && (
-                    <span className="text-xs bg-alma-lightgray px-3 py-1 rounded-full flex items-center">
-                      Price: ${priceRange[0]} - ${priceRange[1]}
-                      <button 
-                        onClick={() => setPriceRange([0, 100])} 
-                        className="ml-2 text-gray-500 hover:text-black"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
-                  
-                  {sortBy !== "recommended" && (
-                    <span className="text-xs bg-alma-lightgray px-3 py-1 rounded-full flex items-center">
-                      Sort: {sortBy === "price-asc" 
-                        ? "Price: Low to High" 
-                        : sortBy === "price-desc" 
-                        ? "Price: High to Low" 
-                        : "Newest First"}
-                      <button 
-                        onClick={() => setSortBy("recommended")} 
-                        className="ml-2 text-gray-500 hover:text-black"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
-                  
-                  <button 
-                    onClick={resetFilters}
-                    className="text-xs text-alma-gold hover:underline ml-2"
-                  >
-                    Clear All
-                  </button>
-                </div>
-              )}
-              
-              {/* Products Grid */}
-              {products.length > 0 ? (
-                <>
-                  <motion.div 
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                    variants={staggeredAnimation}
-                    initial="hidden"
-                    animate="visible"
-                  >
-                    {products.map((product) => (
-                      <motion.div key={product.id} variants={fadeInUp}>
-                        <ProductCard {...product} />
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                  
-                  {/* Pagination */}
-                  {renderPagination()}
-                </>
-              ) : (
-                <div className="py-12 text-center">
-                  <h3 className="text-xl font-medium mb-2">No products found</h3>
-                  <p className="text-gray-600 mb-6">
-                    We couldn't find any products matching your criteria.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    onClick={resetFilters}
-                    className="border-alma-gold text-alma-gold hover:bg-alma-gold/10"
-                  >
-                    Reset Filters
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </section>
       
