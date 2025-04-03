@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -19,13 +18,12 @@ export const createTestUser = async (
   role: 'admin' | 'staff' | 'user'
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    // Check if user already exists by email
+    // Check if user already exists by email using a simpler query approach
     const { data, error: checkError } = await supabase
       .from('profiles')
       .select('id')
-      .eq('email', email);
+      .filter('email', 'eq', email);
     
-    // Use simple type check instead of deep instantiation
     if (checkError) {
       console.error('Error checking for existing user:', checkError);
       return {
