@@ -49,9 +49,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async (): Promise<void> => {
+    console.log("Logout initiated");
     setIsLoading(true);
     try {
+      // First clear the local state
+      setUser(null);
+      setProfile(null);
+      
+      // Then call the auth service logout
       await authLogout();
+      
+      // We don't need to navigate here as we're redirecting in the auth service
+    } catch (error) {
+      console.error("Error during logout:", error);
+      // If logout fails, we still want to clear local state
       setUser(null);
       setProfile(null);
       navigate('/login');

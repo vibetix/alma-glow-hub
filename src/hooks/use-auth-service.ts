@@ -90,17 +90,23 @@ export const useAuthService = () => {
 
   const logout = async (): Promise<void> => {
     try {
+      console.log("Logging out...");
       const { error } = await supabase.auth.signOut();
 
       if (error) {
         throw error;
       }
       
+      // Force a page reload to clear any cached state
+      console.log("Logout successful, reloading page...");
+      window.location.href = '/';
+      
       toast({
         title: "Logged out",
         description: "You have been successfully logged out",
       });
     } catch (error: any) {
+      console.error("Logout error:", error);
       toast({
         title: "Logout failed",
         description: error.message || "There was an error logging out",
