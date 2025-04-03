@@ -20,11 +20,14 @@ export const createTestUser = async (
 ): Promise<{ success: boolean; message: string }> => {
   try {
     // Check if user already exists
-    const { data: existingUser, error: checkError } = await supabase
+    // Using explicit type assertion to avoid deep type instantiation
+    const { data, error: checkError } = await supabase
       .from('profiles')
       .select('id')
       .eq('email', email)
       .maybeSingle();
+    
+    const existingUser = data as { id: string } | null;
       
     if (checkError) {
       console.error('Error checking for existing user:', checkError);
