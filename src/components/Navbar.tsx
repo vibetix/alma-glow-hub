@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, ShoppingCart, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -21,9 +21,9 @@ export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cartItemsCount, setCartItemsCount] = useState(0);
   const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { user, profile, isAuthenticated, logout } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -77,34 +77,6 @@ export const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-  };
-
-  const getDashboardLink = () => {
-    if (!profile) return '/user/dashboard';
-    
-    switch (profile.role) {
-      case 'admin':
-        return '/admin';
-      case 'staff':
-        return '/staff';
-      case 'user':
-      default:
-        return '/user/dashboard';
-    }
-  };
-
-  const getProfileLink = () => {
-    if (!profile) return '/user/profile';
-    
-    switch (profile.role) {
-      case 'admin':
-        return '/admin/settings';
-      case 'staff':
-        return '/staff/settings';
-      case 'user':
-      default:
-        return '/user/profile';
-    }
   };
 
   return (
