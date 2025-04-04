@@ -11,23 +11,7 @@ import { Calendar, Clock, Scissors, MapPin, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistance } from "date-fns";
-
-type Appointment = {
-  id: string;
-  date: string;
-  time: string;
-  status: string;
-  notes: string | null;
-  service: {
-    id: string;
-    name: string;
-    duration: string;
-  } | null;
-  staff: {
-    first_name: string;
-    last_name: string;
-  } | null;
-};
+import { Appointment } from "@/types/database";
 
 const UserAppointments = () => {
   const { user } = useAuth();
@@ -41,6 +25,7 @@ const UserAppointments = () => {
       try {
         setIsLoading(true);
         
+        // Modified query to properly specify the staff relationship
         const { data, error } = await supabase
           .from('appointments')
           .select(`
@@ -64,7 +49,8 @@ const UserAppointments = () => {
         
         if (error) throw error;
         
-        setAppointments(data || []);
+        // Cast the result to match our Appointment type
+        setAppointments(data as unknown as Appointment[]);
       } catch (error) {
         console.error("Error fetching appointments:", error);
         toast({
@@ -82,6 +68,7 @@ const UserAppointments = () => {
     }
   }, [user?.id]);
   
+  // Helper function to get appropriate status badge
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'confirmed':
@@ -97,6 +84,7 @@ const UserAppointments = () => {
     }
   };
   
+  // Helper function to get relative time
   const getRelativeTime = (dateString: string) => {
     try {
       const appointmentDate = new Date(dateString);
@@ -138,7 +126,12 @@ const UserAppointments = () => {
             </div>
           ) : upcomingAppointments.length > 0 ? (
             upcomingAppointments.map(appointment => (
-              <AppointmentCard key={appointment.id} appointment={appointment} />
+              <AppointmentCard 
+                key={appointment.id} 
+                appointment={appointment} 
+                getStatusBadge={getStatusBadge}
+                getRelativeTime={getRelativeTime}
+              />
             ))
           ) : (
             <EmptyState message="You don't have any upcoming appointments." />
@@ -153,7 +146,12 @@ const UserAppointments = () => {
             </div>
           ) : pastAppointments.length > 0 ? (
             pastAppointments.map(appointment => (
-              <AppointmentCard key={appointment.id} appointment={appointment} />
+              <AppointmentCard 
+                key={appointment.id} 
+                appointment={appointment} 
+                getStatusBadge={getStatusBadge}
+                getRelativeTime={getRelativeTime}
+              />
             ))
           ) : (
             <EmptyState message="You don't have any past appointments." />
@@ -168,7 +166,12 @@ const UserAppointments = () => {
             </div>
           ) : appointments.length > 0 ? (
             appointments.map(appointment => (
-              <AppointmentCard key={appointment.id} appointment={appointment} />
+              <AppointmentCard 
+                key={appointment.id} 
+                appointment={appointment} 
+                getStatusBadge={getStatusBadge}
+                getRelativeTime={getRelativeTime}
+              />
             ))
           ) : (
             <EmptyState message="You don't have any appointments." />
@@ -179,7 +182,18 @@ const UserAppointments = () => {
   );
 };
 
-const AppointmentCard = ({ appointment }: { appointment: Appointment }) => {
+// Modified to accept helper functions as props
+interface AppointmentCardProps {
+  appointment: Appointment;
+  getStatusBadge: (status: string) => React.ReactNode;
+  getRelativeTime: (dateString: string) => string;
+}
+
+const AppointmentCard = ({ 
+  appointment, 
+  getStatusBadge, 
+  getRelativeTime 
+}: AppointmentCardProps) => {
   return (
     <Card key={appointment.id}>
       <CardHeader className="flex flex-row items-center justify-between">

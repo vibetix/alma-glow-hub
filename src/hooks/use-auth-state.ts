@@ -30,15 +30,20 @@ export const useAuthState = () => {
                       `${session.user.user_metadata?.first_name || ''} ${session.user.user_metadata?.last_name || ''}`.trim()
               });
               
-              const userProfile = await fetchProfile(session.user.id);
+              try {
+                const userProfile = await fetchProfile(session.user.id);
               
-              if (mounted) {
-                setProfile(userProfile);
-                
-                if (userProfile) {
-                  // Update user object with role from profile
-                  setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
+                if (mounted) {
+                  setProfile(userProfile);
+                  
+                  if (userProfile) {
+                    // Update user object with role from profile
+                    setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
+                  }
                 }
+              } catch (error) {
+                console.error("Error fetching profile:", error);
+                // Don't set isLoading=false here as we still have the basic user info
               }
             } else if (mounted) {
               setUser(null);
@@ -59,15 +64,19 @@ export const useAuthState = () => {
                   `${session.user.user_metadata?.first_name || ''} ${session.user.user_metadata?.last_name || ''}`.trim()
           });
           
-          const userProfile = await fetchProfile(session.user.id);
-          
-          if (mounted) {
-            setProfile(userProfile);
+          try {
+            const userProfile = await fetchProfile(session.user.id);
             
-            if (userProfile) {
-              // Update user object with role from profile
-              setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
+            if (mounted) {
+              setProfile(userProfile);
+              
+              if (userProfile) {
+                // Update user object with role from profile
+                setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
+              }
             }
+          } catch (error) {
+            console.error("Error fetching initial profile:", error);
           }
         }
         
