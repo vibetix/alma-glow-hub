@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { UserLayout } from "@/components/UserLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,12 +28,15 @@ const UserOrders = () => {
           .from('orders')
           .select(`
             id,
+            user_id,
             total,
             status,
             created_at,
+            updated_at,
             shipping_fee,
             tax,
-            shipping_address
+            shipping_address,
+            payment_intent_id
           `)
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
