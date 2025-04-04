@@ -1,304 +1,262 @@
 
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { UserLayout } from "@/components/UserLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Link } from "react-router-dom";
-import { Calendar, Clock, MapPin, X } from "lucide-react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from "@/components/ui/dialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar, Clock, Scissors, MapPin, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatDistance } from "date-fns";
 
-// Mock appointment data
-const mockAppointments = [
-  {
-    id: 1,
-    service: "Aromatherapy Massage",
-    date: "2023-07-15",
-    time: "10:00 AM",
-    duration: "60 min",
-    location: "Main Spa",
-    price: 85.00,
-    status: "confirmed",
-    pastAppointment: false,
-  },
-  {
-    id: 2,
-    service: "Hair Styling",
-    date: "2023-07-20",
-    time: "2:30 PM",
-    duration: "45 min",
-    location: "Hair Salon",
-    price: 65.00,
-    status: "pending",
-    pastAppointment: false,
-  },
-  {
-    id: 3,
-    service: "Facial Treatment",
-    date: "2023-06-05",
-    time: "11:00 AM",
-    duration: "50 min",
-    location: "Skin Care Center",
-    price: 95.00,
-    status: "completed",
-    pastAppointment: true,
-  },
-  {
-    id: 4,
-    service: "Manicure & Pedicure",
-    date: "2023-06-18",
-    time: "3:00 PM",
-    duration: "90 min",
-    location: "Nail Station",
-    price: 75.00,
-    status: "cancelled",
-    pastAppointment: true,
-  },
-];
+type Appointment = {
+  id: string;
+  date: string;
+  time: string;
+  status: string;
+  notes: string | null;
+  service: {
+    id: string;
+    name: string;
+    duration: string;
+  } | null;
+  staff: {
+    first_name: string;
+    last_name: string;
+  } | null;
+};
 
-const AppointmentCard = ({ appointment, onCancel, onReschedule }: { appointment: any; onCancel: (id: number) => void; onReschedule: (id: number) => void }) => {
+const UserAppointments = () => {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setIsLoading(true);
+        
+        const { data, error } = await supabase
+          .from('appointments')
+          .select(`
+            id,
+            date,
+            time,
+            status,
+            notes,
+            service:service_id (
+              id,
+              name,
+              duration
+            ),
+            staff:staff_id (
+              first_name,
+              last_name
+            )
+          `)
+          .eq('client_id', user.id)
+          .order('date', { ascending: true });
+        
+        if (error) throw error;
+        
+        setAppointments(data || []);
+      } catch (error) {
+        console.error("Error fetching appointments:", error);
+        toast({
+          title: "Error Loading Appointments",
+          description: "Failed to load your appointments. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (user?.id) {
+      fetchAppointments();
+    }
+  }, [user?.id]);
+  
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "confirmed":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "completed":
-        return "bg-blue-100 text-blue-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
+      case 'confirmed':
+        return <Badge className="bg-green-500">Confirmed</Badge>;
+      case 'pending':
+        return <Badge className="bg-yellow-500">Pending</Badge>;
+      case 'cancelled':
+        return <Badge className="bg-red-500">Cancelled</Badge>;
+      case 'completed':
+        return <Badge className="bg-blue-500">Completed</Badge>;
       default:
-        return "bg-gray-100 text-gray-800";
+        return <Badge>{status}</Badge>;
     }
   };
-
+  
+  const getRelativeTime = (dateString: string) => {
+    try {
+      const appointmentDate = new Date(dateString);
+      return formatDistance(appointmentDate, new Date(), { addSuffix: true });
+    } catch (e) {
+      return "Invalid date";
+    }
+  };
+  
+  // Filter appointments by status
+  const upcomingAppointments = appointments.filter(
+    app => app.status === 'confirmed' || app.status === 'pending'
+  );
+  
+  const pastAppointments = appointments.filter(
+    app => app.status === 'completed' || app.status === 'cancelled'
+  );
+  
   return (
-    <Card className="mb-4">
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="font-semibold text-lg">{appointment.service}</h3>
-            <div className="flex flex-wrap items-center gap-4 mt-2">
-              <div className="flex items-center text-gray-600 text-sm">
-                <Calendar className="mr-1 h-4 w-4" />
-                <span>{appointment.date}</span>
-              </div>
-              <div className="flex items-center text-gray-600 text-sm">
-                <Clock className="mr-1 h-4 w-4" />
-                <span>{appointment.time} ({appointment.duration})</span>
-              </div>
-              <div className="flex items-center text-gray-600 text-sm">
-                <MapPin className="mr-1 h-4 w-4" />
-                <span>{appointment.location}</span>
-              </div>
+    <UserLayout title="My Appointments">
+      <Tabs defaultValue="upcoming" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+          <TabsTrigger value="past">Past</TabsTrigger>
+          <TabsTrigger value="all">All</TabsTrigger>
+        </TabsList>
+        
+        <div className="flex justify-end">
+          <Button className="bg-alma-gold hover:bg-alma-gold/90">
+            Book New Appointment
+          </Button>
+        </div>
+        
+        <TabsContent value="upcoming" className="space-y-4">
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-48 w-full" />
             </div>
-          </div>
-          <div className="flex items-center">
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(appointment.status)}`}>
-              {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+          ) : upcomingAppointments.length > 0 ? (
+            upcomingAppointments.map(appointment => (
+              <AppointmentCard key={appointment.id} appointment={appointment} />
+            ))
+          ) : (
+            <EmptyState message="You don't have any upcoming appointments." />
+          )}
+        </TabsContent>
+        
+        <TabsContent value="past" className="space-y-4">
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-48 w-full" />
+            </div>
+          ) : pastAppointments.length > 0 ? (
+            pastAppointments.map(appointment => (
+              <AppointmentCard key={appointment.id} appointment={appointment} />
+            ))
+          ) : (
+            <EmptyState message="You don't have any past appointments." />
+          )}
+        </TabsContent>
+        
+        <TabsContent value="all" className="space-y-4">
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-48 w-full" />
+            </div>
+          ) : appointments.length > 0 ? (
+            appointments.map(appointment => (
+              <AppointmentCard key={appointment.id} appointment={appointment} />
+            ))
+          ) : (
+            <EmptyState message="You don't have any appointments." />
+          )}
+        </TabsContent>
+      </Tabs>
+    </UserLayout>
+  );
+};
+
+const AppointmentCard = ({ appointment }: { appointment: Appointment }) => {
+  return (
+    <Card key={appointment.id}>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-lg font-medium">
+          {appointment.service?.name || "Service Unavailable"}
+        </CardTitle>
+        {getStatusBadge(appointment.status)}
+      </CardHeader>
+      
+      <CardContent className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center text-gray-700">
+            <Calendar className="mr-2 h-4 w-4" />
+            <span>{new Date(appointment.date).toLocaleDateString()}</span>
+            <span className="text-xs text-gray-500 ml-2">
+              ({getRelativeTime(appointment.date)})
             </span>
           </div>
-        </div>
-        <div className="flex justify-between items-center pt-4 border-t">
-          <div className="font-medium">${appointment.price.toFixed(2)}</div>
-          <div className="flex gap-2">
-            {!appointment.pastAppointment && appointment.status !== "cancelled" && (
-              <>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => onCancel(appointment.id)}
-                >
-                  <X className="mr-1 h-4 w-4" /> Cancel
-                </Button>
-                <Button 
-                  size="sm" 
-                  className="bg-alma-gold hover:bg-alma-gold/90"
-                  onClick={() => onReschedule(appointment.id)}
-                >
-                  Reschedule
-                </Button>
-              </>
-            )}
-            {appointment.status === "completed" && (
-              <Button variant="outline" size="sm">
-                Leave Review
-              </Button>
-            )}
+          
+          <div className="flex items-center text-gray-700">
+            <Clock className="mr-2 h-4 w-4" />
+            <span>{appointment.time}</span>
           </div>
+          
+          <div className="flex items-center text-gray-700">
+            <Scissors className="mr-2 h-4 w-4" />
+            <span>Duration: {appointment.service?.duration || "N/A"}</span>
+          </div>
+          
+          <div className="flex items-center text-gray-700">
+            <MapPin className="mr-2 h-4 w-4" />
+            <span>Alma Beauty Salon</span>
+          </div>
+        </div>
+        
+        {appointment.staff && (
+          <div className="mt-4 text-gray-700">
+            <span className="font-medium">Stylist: </span>
+            {appointment.staff.first_name} {appointment.staff.last_name}
+          </div>
+        )}
+        
+        {appointment.notes && (
+          <div className="mt-2 text-gray-700">
+            <span className="font-medium">Notes: </span>
+            {appointment.notes}
+          </div>
+        )}
+        
+        <div className="mt-4 pt-4 border-t flex justify-end space-x-2">
+          {appointment.status === 'pending' || appointment.status === 'confirmed' ? (
+            <>
+              <Button variant="outline" size="sm">Reschedule</Button>
+              <Button variant="destructive" size="sm">Cancel</Button>
+            </>
+          ) : appointment.status === 'completed' ? (
+            <Button variant="outline" size="sm">Book Again</Button>
+          ) : null}
         </div>
       </CardContent>
     </Card>
   );
 };
 
-const Appointments = () => {
-  const [activeTab, setActiveTab] = useState("upcoming");
-  const [appointmentsData, setAppointmentsData] = useState(mockAppointments);
-  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
-  const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false);
-  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
-  
-  const upcomingAppointments = appointmentsData.filter(a => !a.pastAppointment);
-  const pastAppointments = appointmentsData.filter(a => a.pastAppointment);
-
-  const handleCancel = (id: number) => {
-    setSelectedAppointment(appointmentsData.find(a => a.id === id));
-    setIsCancelDialogOpen(true);
-  };
-
-  const handleReschedule = (id: number) => {
-    setSelectedAppointment(appointmentsData.find(a => a.id === id));
-    setIsRescheduleDialogOpen(true);
-  };
-
-  const confirmCancel = () => {
-    setAppointmentsData(appointmentsData.map(a => 
-      a.id === selectedAppointment.id ? { ...a, status: "cancelled" } : a
-    ));
-    setIsCancelDialogOpen(false);
-    toast({
-      title: "Appointment Cancelled",
-      description: `Your ${selectedAppointment.service} appointment has been cancelled.`,
-    });
-  };
-
-  const confirmReschedule = () => {
-    // In a real app, this would open a date/time picker and update the appointment
-    setIsRescheduleDialogOpen(false);
-    toast({
-      title: "Appointment Rescheduled",
-      description: "Your appointment has been rescheduled. Check your email for details.",
-    });
-  };
-
+const EmptyState = ({ message }: { message: string }) => {
   return (
-    <UserLayout title="My Appointments">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <p className="text-gray-600">View and manage your appointments</p>
-        </div>
-        <Button className="bg-alma-gold hover:bg-alma-gold/90" asChild>
-          <Link to="/booking">Book New Appointment</Link>
-        </Button>
-      </div>
-
-      <Tabs defaultValue="upcoming" onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="past">Past</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="upcoming" className="mt-0">
-          {upcomingAppointments.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-4 text-lg font-medium">No upcoming appointments</h3>
-              <p className="mt-1 text-gray-500">You don't have any appointments scheduled.</p>
-              <Button className="mt-6 bg-alma-gold hover:bg-alma-gold/90" asChild>
-                <Link to="/booking">Book an Appointment</Link>
-              </Button>
-            </div>
-          ) : (
-            upcomingAppointments.map(appointment => (
-              <AppointmentCard 
-                key={appointment.id} 
-                appointment={appointment} 
-                onCancel={handleCancel}
-                onReschedule={handleReschedule}
-              />
-            ))
-          )}
-        </TabsContent>
-        
-        <TabsContent value="past" className="mt-0">
-          {pastAppointments.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <Clock className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-4 text-lg font-medium">No past appointments</h3>
-              <p className="mt-1 text-gray-500">You haven't had any appointments yet.</p>
-            </div>
-          ) : (
-            pastAppointments.map(appointment => (
-              <AppointmentCard 
-                key={appointment.id} 
-                appointment={appointment} 
-                onCancel={handleCancel}
-                onReschedule={handleReschedule}
-              />
-            ))
-          )}
-        </TabsContent>
-      </Tabs>
-
-      {/* Cancel Appointment Dialog */}
-      <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Cancel Appointment</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to cancel this appointment? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            {selectedAppointment && (
-              <div className="space-y-2">
-                <p><strong>Service:</strong> {selectedAppointment.service}</p>
-                <p><strong>Date:</strong> {selectedAppointment.date}</p>
-                <p><strong>Time:</strong> {selectedAppointment.time}</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
-              Keep Appointment
-            </Button>
-            <Button variant="destructive" onClick={confirmCancel}>
-              Yes, Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reschedule Appointment Dialog */}
-      <Dialog open={isRescheduleDialogOpen} onOpenChange={setIsRescheduleDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Reschedule Appointment</DialogTitle>
-            <DialogDescription>
-              Please contact us at (555) 123-4567 to reschedule your appointment, or we will contact you shortly with available times.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            {selectedAppointment && (
-              <div className="space-y-2">
-                <p><strong>Service:</strong> {selectedAppointment.service}</p>
-                <p><strong>Current Date:</strong> {selectedAppointment.date}</p>
-                <p><strong>Current Time:</strong> {selectedAppointment.time}</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRescheduleDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button className="bg-alma-gold hover:bg-alma-gold/90" onClick={confirmReschedule}>
-              Request Reschedule
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </UserLayout>
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <AlertCircle className="h-12 w-12 text-gray-400 mb-4" />
+      <h3 className="text-lg font-medium text-gray-900">{message}</h3>
+      <p className="mt-2 text-sm text-gray-500">
+        Book an appointment to get started with our services.
+      </p>
+      <Button className="mt-6 bg-alma-gold hover:bg-alma-gold/90">
+        Book Appointment
+      </Button>
+    </div>
   );
 };
 
-export default Appointments;
+export default UserAppointments;

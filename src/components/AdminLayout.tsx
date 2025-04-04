@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -14,7 +14,9 @@ import {
   UserPlus,
   Package,
   ShoppingCart,
-  CreditCard 
+  CreditCard,
+  Menu,
+  X 
 } from "lucide-react";
 
 type AdminLayoutProps = {
@@ -26,6 +28,7 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -88,6 +91,12 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
       <header className="bg-white border-b sticky top-0 z-30">
         <div className="container-custom py-3 flex items-center justify-between">
           <div className="flex items-center">
+            <button 
+              className="mr-2 block md:hidden"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              <Menu className="h-6 w-6" />
+            </button>
             <Link to="/">
               <img 
                 src="/lovable-uploads/fb6df437-d752-46c4-9f14-60e6145c5695.png" 
@@ -111,6 +120,47 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
           </div>
         </div>
       </header>
+      
+      {/* Mobile menu overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        ></div>
+      )}
+      
+      {/* Mobile sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white transform transition-transform duration-300 md:hidden ${
+        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+      }`}>
+        <div className="p-4 flex justify-between items-center border-b">
+          <img 
+            src="/lovable-uploads/fb6df437-d752-46c4-9f14-60e6145c5695.png" 
+            alt="Alma Beauty Logo" 
+            className="h-8"
+          />
+          <button onClick={() => setIsMobileMenuOpen(false)}>
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <nav className="p-4 space-y-1">
+          {sidebarLinks.map((link) => (
+            <Link
+              key={link.href}
+              to={link.href}
+              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm ${
+                link.active
+                  ? "bg-alma-gold/10 text-alma-gold font-medium"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              {link.icon}
+              {link.title}
+            </Link>
+          ))}
+        </nav>
+      </div>
       
       <div className="flex-1 flex">
         <aside className="w-64 bg-white border-r flex-shrink-0 hidden md:block">

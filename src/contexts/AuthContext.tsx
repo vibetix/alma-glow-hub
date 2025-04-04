@@ -6,6 +6,7 @@ import { useAuthState } from '@/hooks/use-auth-state';
 import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 import { AuthContextType } from '@/types/auth';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -30,10 +31,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Redirect based on user role with more strict logic
   useEffect(() => {
-    if (profile && !isLoading) {
+    // Only redirect if we're done loading and have profile data
+    if (!isLoading && profile) {
       const path = window.location.pathname;
       
-      // Strict role-based redirection
+      // Only redirect from login page or home page
       if (path === '/login' || path === '/') {
         redirectBasedOnRole(profile);
       }
@@ -46,6 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           variant: "destructive",
         });
         navigate('/');
+        return;
       }
       
       if (path.startsWith('/staff') && profile.role !== 'staff') {
@@ -55,6 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           variant: "destructive",
         });
         navigate('/');
+        return;
       }
       
       if (path.startsWith('/user') && profile.role !== 'user') {
@@ -64,6 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           variant: "destructive",
         });
         navigate('/');
+        return;
       }
     }
   }, [profile, isLoading, redirectBasedOnRole, navigate]);
@@ -73,26 +78,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const success = await authLogin(email, password);
       
-      // Additional validation for admin login
       if (success) {
-        // Wait for profile to load
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const currentProfile = profile; // Capture current profile state
-        
-        if (email === 'admin@almabeauty.com' && currentProfile?.role !== 'admin') {
-          // Logout if non-admin tries to use admin email
-          await authLogout();
-          toast({
-            title: "Login Failed",
-            description: "Invalid login credentials.",
-            variant: "destructive",
-          });
-          return false;
-        }
+        // Add a small delay to ensure profile data is loaded
+        await new Promise(resolve => setTimeout(resolve, 300));
+        console.log("Login successful, redirecting...");
+        return true;
       }
       
-      return success;
+      return false;
     } finally {
       setIsLoading(false);
     }
