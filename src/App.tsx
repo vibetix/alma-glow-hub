@@ -1,10 +1,8 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import React from 'react';
 
 // Pages
 import Index from "./pages/Index";
@@ -30,7 +28,6 @@ import Settings from "./pages/admin/Settings";
 import Orders from "./pages/admin/Orders";
 import Payments from "./pages/admin/Payments";
 import Staff from "./pages/admin/Staff";
-import TestUsers from "./pages/admin/TestUsers";
 import StaffManagement from "./pages/admin/StaffManagement";
 
 // User Pages
@@ -54,6 +51,9 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { UserProtectedRoute } from "@/components/UserProtectedRoute";
 import { StaffProtectedRoute } from "@/components/StaffProtectedRoute";
+import React from 'react';
+import TestUsers from './pages/admin/TestUsers';
+import TestUserSetup from "./pages/TestUserSetup";
 
 const queryClient = new QueryClient();
 
