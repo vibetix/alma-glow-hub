@@ -8,6 +8,8 @@ export const useAuthNavigation = () => {
   const redirectBasedOnRole = (profile: Profile | null) => {
     if (!profile) return;
     
+    console.log(`Redirecting to role-specific dashboard: ${profile.role}`);
+    
     switch (profile.role) {
       case 'admin':
         navigate('/admin');
@@ -16,6 +18,9 @@ export const useAuthNavigation = () => {
         navigate('/staff');
         break;
       case 'user':
+        navigate('/user/dashboard');
+        break;
+      default:
         navigate('/user/dashboard');
         break;
     }

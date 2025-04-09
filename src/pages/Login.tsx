@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PageTransition } from '@/components/PageTransition';
 import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -25,8 +25,10 @@ const loginSchema = z.object({
 });
 
 const Login = () => {
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, profile } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
+  const { getDashboardLink } = useAuthNavigation();
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -41,7 +43,15 @@ const Login = () => {
     try {
       const success = await login(values.email, values.password);
       
-      if (!success) {
+      if (success) {
+        console.log("Login successful in Login component");
+        toast({
+          title: "Login Successful",
+          description: "Redirecting to your dashboard...",
+        });
+        
+        // The redirection will happen automatically via the useEffect in AuthContext
+      } else {
         toast({
           title: "Login Failed",
           description: "Invalid email or password.",
@@ -106,7 +116,7 @@ const Login = () => {
                 <Button
                   type="submit"
                   className="w-full bg-alma-gold hover:bg-alma-gold/90"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isLoading}
                 >
                   {isSubmitting ? (
                     <>

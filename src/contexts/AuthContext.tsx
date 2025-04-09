@@ -1,6 +1,6 @@
 
 import { createContext, useContext, ReactNode, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthService } from '@/hooks/use-auth-service';
 import { useAuthState } from '@/hooks/use-auth-state';
 import { useAuthNavigation } from '@/hooks/use-auth-navigation';
@@ -12,6 +12,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { 
     user, 
     profile, 
@@ -27,17 +28,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logout: authLogout 
   } = useAuthService();
   
-  const { redirectBasedOnRole } = useAuthNavigation();
+  const { redirectBasedOnRole, getDashboardLink } = useAuthNavigation();
 
   // Redirect based on user role with more strict logic
   useEffect(() => {
     // Only redirect if we're done loading and have profile data
     if (!isLoading && profile) {
-      const path = window.location.pathname;
+      const path = location.pathname;
       
-      // Only redirect from login page or home page
+      // Handle redirection from login page or home page
       if (path === '/login' || path === '/') {
+        console.log(`Redirecting user with role ${profile.role} to their dashboard`);
         redirectBasedOnRole(profile);
+        return;
       }
       
       // Additional checks for unauthorized access
@@ -47,7 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "You do not have permission to access the admin dashboard.",
           variant: "destructive",
         });
-        navigate('/');
+        navigate(getDashboardLink(profile));
         return;
       }
       
@@ -57,7 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "You do not have permission to access the staff dashboard.",
           variant: "destructive",
         });
-        navigate('/');
+        navigate(getDashboardLink(profile));
         return;
       }
       
@@ -67,11 +70,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "You do not have permission to access the user dashboard.",
           variant: "destructive",
         });
-        navigate('/');
+        navigate(getDashboardLink(profile));
         return;
       }
     }
-  }, [profile, isLoading, redirectBasedOnRole, navigate]);
+  }, [profile, isLoading, redirectBasedOnRole, navigate, location.pathname, getDashboardLink]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);

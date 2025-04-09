@@ -23,31 +23,44 @@ export const useAuthState = () => {
             
             if (session?.user && mounted) {
               // Format the user data to match our AuthUser type
-              setUser({
+              const authUser: AuthUser = {
                 id: session.user.id,
                 email: session.user.email,
                 name: session.user.user_metadata?.name || 
                       `${session.user.user_metadata?.first_name || ''} ${session.user.user_metadata?.last_name || ''}`.trim()
-              });
+              };
               
-              try {
-                const userProfile = await fetchProfile(session.user.id);
+              setUser(authUser);
               
-                if (mounted) {
-                  setProfile(userProfile);
+              // Use setTimeout to avoid potential deadlock with Supabase
+              setTimeout(async () => {
+                try {
+                  if (!mounted) return;
                   
-                  if (userProfile) {
-                    // Update user object with role from profile
-                    setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
+                  const userProfile = await fetchProfile(session.user.id);
+                  
+                  if (mounted) {
+                    setProfile(userProfile);
+                    
+                    if (userProfile) {
+                      // Update user object with role from profile
+                      setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
+                    }
+                    
+                    // Always make sure to set isLoading to false, even if profile fetch fails
+                    setIsLoading(false);
+                  }
+                } catch (error) {
+                  console.error("Error fetching profile:", error);
+                  if (mounted) {
+                    setIsLoading(false);
                   }
                 }
-              } catch (error) {
-                console.error("Error fetching profile:", error);
-                // Don't set isLoading=false here as we still have the basic user info
-              }
+              }, 0);
             } else if (mounted) {
               setUser(null);
               setProfile(null);
+              setIsLoading(false);
             }
           }
         );
@@ -57,12 +70,14 @@ export const useAuthState = () => {
         
         if (session?.user && mounted) {
           // Format the user data to match our AuthUser type
-          setUser({
+          const authUser: AuthUser = {
             id: session.user.id,
             email: session.user.email,
             name: session.user.user_metadata?.name || 
                   `${session.user.user_metadata?.first_name || ''} ${session.user.user_metadata?.last_name || ''}`.trim()
-          });
+          };
+          
+          setUser(authUser);
           
           try {
             const userProfile = await fetchProfile(session.user.id);
@@ -74,13 +89,18 @@ export const useAuthState = () => {
                 // Update user object with role from profile
                 setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
               }
+              
+              // Always ensure we set isLoading to false when we're done
+              setIsLoading(false);
             }
           } catch (error) {
             console.error("Error fetching initial profile:", error);
+            if (mounted) {
+              setIsLoading(false);
+            }
           }
-        }
-        
-        if (mounted) {
+        } else if (mounted) {
+          // Make sure to set isLoading to false even if there's no session
           setIsLoading(false);
         }
         
