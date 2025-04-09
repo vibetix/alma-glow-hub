@@ -4,16 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { createAdminUser } from '@/utils/auth-seeder';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { PageTransition } from '@/components/PageTransition';
 import { Link } from 'react-router-dom';
 
 const TestUserSetup = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isCreated, setIsCreated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCreateAdminUser = async () => {
     setIsCreating(true);
+    setError(null);
+    
     try {
       const result = await createAdminUser();
       
@@ -24,6 +27,7 @@ const TestUserSetup = () => {
           description: result.message,
         });
       } else {
+        setError(result.message);
         toast({
           title: "Failed to Create Admin",
           description: result.message,
@@ -32,6 +36,7 @@ const TestUserSetup = () => {
       }
     } catch (error) {
       console.error('Error creating admin user:', error);
+      setError(error.message || "An unexpected error occurred");
       toast({
         title: "Error Creating Admin",
         description: "An unexpected error occurred. Check console for details.",
@@ -70,6 +75,19 @@ const TestUserSetup = () => {
                     <p className="text-green-800 font-medium">Admin user created successfully!</p>
                     <p className="text-green-700 text-sm mt-1">
                       You can now <Link to="/login" className="text-blue-600 hover:underline">log in</Link> with the credentials above.
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {error && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-md flex items-start">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 mr-2" />
+                  <div>
+                    <p className="text-amber-800 font-medium">There was an issue:</p>
+                    <p className="text-amber-700 text-sm mt-1">{error}</p>
+                    <p className="text-amber-700 text-sm mt-1">
+                      You can still try to <Link to="/login" className="text-blue-600 hover:underline">log in</Link> with the credentials above as the user might already exist.
                     </p>
                   </div>
                 </div>
