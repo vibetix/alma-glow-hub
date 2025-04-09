@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -21,8 +22,8 @@ export const createTestUser = async (
     // Check if user already exists by email using a simpler query approach
     const { data, error: checkError } = await supabase
       .from('profiles')
-      .select('id')
-      .filter('email', 'eq', email);
+      .select('id, email')
+      .eq('email', email);
     
     if (checkError) {
       console.error('Error checking for existing user:', checkError);
@@ -34,7 +35,7 @@ export const createTestUser = async (
       
     if (data && data.length > 0) {
       return {
-        success: false,
+        success: true,
         message: `User with email ${email} already exists`
       };
     }
@@ -62,10 +63,15 @@ export const createTestUser = async (
       };
     }
 
-    // Update the user's role in the profiles table
+    // Update the user's role in the profiles table and add the email
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ role })
+      .update({ 
+        role,
+        email, 
+        first_name: firstName,
+        last_name: lastName
+      })
       .eq('id', authData.user.id);
 
     if (profileError) {
