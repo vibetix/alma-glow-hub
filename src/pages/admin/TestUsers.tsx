@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { createAllTestUsers } from '@/utils/auth-seeder';
@@ -9,11 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const TestUsers = () => {
   const [isCreating, setIsCreating] = useState(false);
-  const [status, setStatus] = useState<{
-    admin: boolean;
-    staff: boolean;
-    user: boolean;
-  }>({
+  const [status, setStatus] = useState({
     admin: false,
     staff: false,
     user: false,
@@ -23,21 +19,75 @@ const TestUsers = () => {
   const checkExistingUsers = async () => {
     try {
       const emails = ['admin@almabeauty.com', 'staff@almabeauty.com', 'user@almabeauty.com'];
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('email, role')
-        .in('email', emails);
-
-      if (error) throw error;
-
+      
+      // Since we can't query by email in profiles table, we'll check via auth.users
+      // But we need to get each one individually and check their role from profiles
       const newStatus = { admin: false, staff: false, user: false };
       
-      if (data) {
-        data.forEach(profile => {
-          if (profile.email === 'admin@almabeauty.com') newStatus.admin = true;
-          if (profile.email === 'staff@almabeauty.com') newStatus.staff = true;
-          if (profile.email === 'user@almabeauty.com') newStatus.user = true;
-        });
+      // Check for admin user
+      const { data: adminData } = await supabase.auth.signInWithPassword({
+        email: 'admin@almabeauty.com',
+        password: 'password123'
+      });
+      
+      if (adminData?.user) {
+        // Check if they actually have admin role
+        const { data: adminProfile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', adminData.user.id)
+          .single();
+        
+        if (adminProfile?.role === 'admin') {
+          newStatus.admin = true;
+        }
+        
+        // Sign out after checking
+        await supabase.auth.signOut();
+      }
+      
+      // Check for staff user
+      const { data: staffData } = await supabase.auth.signInWithPassword({
+        email: 'staff@almabeauty.com',
+        password: 'password123'
+      });
+      
+      if (staffData?.user) {
+        // Check if they actually have staff role
+        const { data: staffProfile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', staffData.user.id)
+          .single();
+        
+        if (staffProfile?.role === 'staff') {
+          newStatus.staff = true;
+        }
+        
+        // Sign out after checking
+        await supabase.auth.signOut();
+      }
+      
+      // Check for regular user
+      const { data: userData } = await supabase.auth.signInWithPassword({
+        email: 'user@almabeauty.com',
+        password: 'password123'
+      });
+      
+      if (userData?.user) {
+        // Check if they actually have user role
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userData.user.id)
+          .single();
+        
+        if (userProfile?.role === 'user') {
+          newStatus.user = true;
+        }
+        
+        // Sign out after checking
+        await supabase.auth.signOut();
       }
       
       setStatus(newStatus);
@@ -47,7 +97,7 @@ const TestUsers = () => {
   };
   
   // Check for existing users when component mounts
-  useState(() => {
+  useEffect(() => {
     checkExistingUsers();
   }, []);
   

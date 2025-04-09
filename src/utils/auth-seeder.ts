@@ -19,21 +19,14 @@ export const createTestUser = async (
   role: 'admin' | 'staff' | 'user'
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    // Check if user already exists by email using a simpler query approach
-    const { data, error: checkError } = await supabase
-      .from('profiles')
-      .select('id, email')
-      .eq('email', email);
+    // Check if user already exists by checking auth.users via the profile id
+    // We can't query by email directly since email isn't in the profiles table
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
     
-    if (checkError) {
-      console.error('Error checking for existing user:', checkError);
-      return {
-        success: false,
-        message: `Error checking for existing user: ${checkError.message}`
-      };
-    }
-      
-    if (data && data.length > 0) {
+    if (!authError && authData?.user) {
       return {
         success: true,
         message: `User with email ${email} already exists`
@@ -41,7 +34,7 @@ export const createTestUser = async (
     }
     
     // Create new user with Supabase auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -52,27 +45,26 @@ export const createTestUser = async (
       }
     });
 
-    if (authError) {
-      throw authError;
+    if (signUpError) {
+      throw signUpError;
     }
 
-    if (!authData.user) {
+    if (!signUpData.user) {
       return {
         success: false,
         message: 'Failed to create user'
       };
     }
 
-    // Update the user's role in the profiles table and add the email
+    // Update the user's role in the profiles table
     const { error: profileError } = await supabase
       .from('profiles')
       .update({ 
         role,
-        email, 
         first_name: firstName,
         last_name: lastName
       })
-      .eq('id', authData.user.id);
+      .eq('id', signUpData.user.id);
 
     if (profileError) {
       throw profileError;
