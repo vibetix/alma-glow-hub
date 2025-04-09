@@ -1,8 +1,10 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import React from 'react';
 
 // Pages
 import Index from "./pages/Index";
@@ -52,9 +54,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { UserProtectedRoute } from "@/components/UserProtectedRoute";
 import { StaffProtectedRoute } from "@/components/StaffProtectedRoute";
-import TestUsers from './pages/admin/TestUsers';  // Update this import
-import React from 'react';
-import TestUserSetup from "./pages/TestUserSetup";
 
 const queryClient = new QueryClient();
 
@@ -264,8 +263,8 @@ const App = () => (
             
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
-            {/* Update this route to use TestUsers */}
-            <Route path="/setup-admin" element={<TestUserSetup />} />
+            {/* Admin Setup Route */}
+            <Route path="/setup-admin" element={<TestUsers />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
