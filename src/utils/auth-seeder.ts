@@ -27,9 +27,27 @@ export const createTestUser = async (
     });
     
     if (!authError && authData?.user) {
+      console.log(`User with email ${email} already exists with ID: ${authData.user.id}`);
+      
+      // Update the user's role in the profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          role,
+          first_name: firstName,
+          last_name: lastName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', authData.user.id);
+
+      if (profileError) {
+        console.error("Error updating profile:", profileError);
+        throw profileError;
+      }
+      
       return {
         success: true,
-        message: `User with email ${email} already exists`
+        message: `User with email ${email} already exists and has been updated to role: ${role}`
       };
     }
     
@@ -56,18 +74,44 @@ export const createTestUser = async (
       };
     }
 
-    // Update the user's role in the profiles table
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ 
-        role,
-        first_name: firstName,
-        last_name: lastName
-      })
-      .eq('id', signUpData.user.id);
+    console.log(`Created new user with ID: ${signUpData.user.id}`);
 
-    if (profileError) {
-      throw profileError;
+    // Check if the profile already exists
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', signUpData.user.id)
+      .single();
+    
+    if (existingProfile) {
+      // Update existing profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          role,
+          first_name: firstName,
+          last_name: lastName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', signUpData.user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+    } else {
+      // Insert new profile
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({ 
+          id: signUpData.user.id,
+          role,
+          first_name: firstName,
+          last_name: lastName
+        });
+
+      if (insertError) {
+        throw insertError;
+      }
     }
 
     return {
@@ -126,4 +170,19 @@ export const createAllTestUsers = async () => {
       variant: result.success ? 'default' : 'destructive'
     });
   }
+};
+
+/**
+ * Creates just an admin user - useful for initial setup
+ */
+export const createAdminUser = async () => {
+  const result = await createTestUser(
+    'admin@almabeauty.com',
+    'password123',
+    'Admin',
+    'User',
+    'admin'
+  );
+  
+  return result;
 };
