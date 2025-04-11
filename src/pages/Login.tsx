@@ -25,7 +25,7 @@ const loginSchema = z.object({
 });
 
 const Login = () => {
-  const { login, isLoading, profile } = useAuth();
+  const { login, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { getDashboardLink } = useAuthNavigation();
@@ -50,7 +50,12 @@ const Login = () => {
           description: "Redirecting to your dashboard...",
         });
         
-        // The redirection will happen automatically via the useEffect in AuthContext
+        // Manual navigation after successful login
+        // This is a backup in case the auth context redirect doesn't trigger
+        setTimeout(() => {
+          // Force redirect to a general page, the auth context will handle proper redirection
+          navigate('/user/dashboard');
+        }, 800);
       } else {
         toast({
           title: "Login Failed",

@@ -37,7 +37,9 @@ export const useAuthState = () => {
                 try {
                   if (!mounted) return;
                   
+                  console.log("Fetching profile for user:", authUser.id);
                   const userProfile = await fetchProfile(session.user.id);
+                  console.log("Profile fetched:", userProfile);
                   
                   if (mounted) {
                     setProfile(userProfile);
@@ -80,7 +82,9 @@ export const useAuthState = () => {
           setUser(authUser);
           
           try {
+            console.log("Fetching initial profile for user:", authUser.id);
             const userProfile = await fetchProfile(session.user.id);
+            console.log("Initial profile fetched:", userProfile);
             
             if (mounted) {
               setProfile(userProfile);

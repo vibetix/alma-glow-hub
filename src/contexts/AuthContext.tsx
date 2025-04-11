@@ -33,48 +33,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Redirect based on user role with more strict logic
   useEffect(() => {
     // Only redirect if we're done loading and have profile data
-    if (!isLoading && profile) {
+    if (!isLoading && user) {
       const path = location.pathname;
       
       // Handle redirection from login page or home page
       if (path === '/login' || path === '/') {
-        console.log(`Redirecting user with role ${profile.role} to their dashboard`);
-        redirectBasedOnRole(profile);
+        console.log(`User authenticated, redirecting user with ID ${user.id} to their dashboard`);
+        
+        // If we have a profile with role, use it for redirection
+        if (profile?.role) {
+          console.log(`User has role ${profile.role}, redirecting to appropriate dashboard`);
+          redirectBasedOnRole(profile);
+        } else {
+          // Default to user dashboard if no profile/role available
+          console.log(`No profile/role available, redirecting to default dashboard`);
+          navigate('/user/dashboard');
+        }
         return;
       }
       
       // Additional checks for unauthorized access
-      if (path.startsWith('/admin') && profile.role !== 'admin') {
-        toast({
-          title: "Access Denied",
-          description: "You do not have permission to access the admin dashboard.",
-          variant: "destructive",
-        });
-        navigate(getDashboardLink(profile));
-        return;
-      }
-      
-      if (path.startsWith('/staff') && profile.role !== 'staff') {
-        toast({
-          title: "Access Denied",
-          description: "You do not have permission to access the staff dashboard.",
-          variant: "destructive",
-        });
-        navigate(getDashboardLink(profile));
-        return;
-      }
-      
-      if (path.startsWith('/user') && profile.role !== 'user') {
-        toast({
-          title: "Access Denied",
-          description: "You do not have permission to access the user dashboard.",
-          variant: "destructive",
-        });
-        navigate(getDashboardLink(profile));
-        return;
+      if (profile?.role) {
+        if (path.startsWith('/admin') && profile.role !== 'admin') {
+          toast({
+            title: "Access Denied",
+            description: "You do not have permission to access the admin dashboard.",
+            variant: "destructive",
+          });
+          navigate(getDashboardLink(profile));
+          return;
+        }
+        
+        if (path.startsWith('/staff') && profile.role !== 'staff') {
+          toast({
+            title: "Access Denied",
+            description: "You do not have permission to access the staff dashboard.",
+            variant: "destructive",
+          });
+          navigate(getDashboardLink(profile));
+          return;
+        }
+        
+        if (path.startsWith('/user') && profile.role !== 'user') {
+          toast({
+            title: "Access Denied",
+            description: "You do not have permission to access the user dashboard.",
+            variant: "destructive",
+          });
+          navigate(getDashboardLink(profile));
+          return;
+        }
       }
     }
-  }, [profile, isLoading, redirectBasedOnRole, navigate, location.pathname, getDashboardLink]);
+  }, [profile, isLoading, user, redirectBasedOnRole, navigate, location.pathname, getDashboardLink]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
@@ -83,8 +94,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (success) {
         // Add a small delay to ensure profile data is loaded
-        await new Promise(resolve => setTimeout(resolve, 300));
-        console.log("Login successful, redirecting...");
+        console.log("Login successful, redirecting with delay to ensure profile is loaded...");
+        
+        // Force a small delay to ensure profile is loaded
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         return true;
       }
       

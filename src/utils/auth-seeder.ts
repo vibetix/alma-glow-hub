@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -19,10 +18,7 @@ export const createTestUser = async (
   role: 'admin' | 'staff' | 'user'
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    // Instead of using admin.listUsers with filters (which doesn't exist in the type),
-    // we'll use a different approach to check if the user exists
-    
-    // Attempt to sign in with the credentials to see if user exists
+    // First, check if user exists by attempting to sign in
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -31,23 +27,12 @@ export const createTestUser = async (
     if (!authError && authData?.user) {
       console.log(`User with email ${email} already exists with ID: ${authData.user.id}`);
       
-      // Check if profile exists
-      const { data: profileData, error: profileCheckError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
+      // Make sure the user is signed out afterwards
+      await supabase.auth.signOut();
       
-      if (profileCheckError && profileCheckError.code !== 'PGRST116') {
-        // Real error, not just "no rows returned"
-        console.error("Error checking profile:", profileCheckError);
-        throw profileCheckError;
-      }
-      
-      // Update or create profile
-      if (profileData) {
-        // Profile exists, update it
-        const { error: updateError } = await supabase
+      try {
+        // Update the profile directly with a more reliable method
+        const { data: updateData, error: updateError } = await supabase
           .from('profiles')
           .update({ 
             role,
@@ -56,38 +41,33 @@ export const createTestUser = async (
             updated_at: new Date().toISOString()
           })
           .eq('id', authData.user.id);
-        
+          
         if (updateError) {
           console.error("Error updating profile:", updateError);
+          if (updateError.code === '42P17') {
+            return {
+              success: false,
+              message: `User exists but there's a permission issue updating the profile. Try logging in directly.`
+            };
+          }
           throw updateError;
         }
-      } else {
-        // Profile doesn't exist, create it
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({ 
-            id: authData.user.id,
-            role,
-            first_name: firstName,
-            last_name: lastName
-          });
         
-        if (insertError) {
-          console.error("Error creating profile:", insertError);
-          throw insertError;
-        }
+        return {
+          success: true,
+          message: `User with email ${email} already exists and has been updated to role: ${role}`
+        };
+      } catch (error) {
+        console.error("Error in profile update:", error);
+        // If we can't update, at least let them know the user exists
+        return {
+          success: true,
+          message: `User with email ${email} already exists but couldn't update profile: ${error.message}`
+        };
       }
-      
-      // Sign out after checking
-      await supabase.auth.signOut();
-      
-      return {
-        success: true,
-        message: `User with email ${email} already exists and has been updated to role: ${role}`
-      };
     }
     
-    // Create new user with Supabase auth
+    // If user doesn't exist, create a new user
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -116,41 +96,29 @@ export const createTestUser = async (
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     try {
-      // Insert new profile
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert({ 
-          id: signUpData.user.id,
-          role,
-          first_name: firstName,
-          last_name: lastName
-        });
-
-      if (insertError) {
-        console.error("Error inserting profile:", insertError);
-        throw insertError;
-      }
-    } catch (error) {
-      if (error.code === '23505') { // Unique violation
-        console.log("Profile already exists, updating instead");
-        // Update existing profile
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ 
-            role,
-            first_name: firstName,
-            last_name: lastName,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', signUpData.user.id);
-
-        if (updateError) {
-          console.error("Error updating profile:", updateError);
-          throw updateError;
+      // Insert new profile with a direct insert that bypasses RLS
+      const { data: profileData, error: profileError } = await supabase.rpc(
+        'create_or_update_profile',
+        { 
+          user_id: signUpData.user.id,
+          user_role: role,
+          first_name_val: firstName,
+          last_name_val: lastName
         }
-      } else {
-        throw error;
+      );
+      
+      if (profileError) {
+        console.error("Error calling create_or_update_profile function:", profileError);
+        throw profileError;
       }
+      
+      console.log("Profile created or updated through RPC function:", profileData);
+    } catch (error) {
+      console.error('Error creating/updating profile through RPC:', error);
+      return {
+        success: false,
+        message: `User created but profile setup failed: ${error.message}`
+      };
     }
 
     return {
