@@ -19,77 +19,8 @@ export const createTestUser = async (
   role: 'admin' | 'staff' | 'user'
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    // First check if a user with this email already exists
-    const { data: existingUsers, error: existingError } = await supabase.auth.admin.listUsers({
-      filters: {
-        email: email
-      }
-    });
-    
-    if (existingError) {
-      console.log("Error checking existing users:", existingError);
-      // Proceed with normal flow if we can't check existing users
-    } else if (existingUsers && existingUsers.users.length > 0) {
-      // User exists in auth, now check if profile exists
-      const existingUser = existingUsers.users[0];
-      console.log(`User with email ${email} already exists with ID: ${existingUser.id}`);
-      
-      // Check if profile exists
-      const { data: profileData, error: profileCheckError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', existingUser.id)
-        .single();
-      
-      if (profileCheckError && profileCheckError.code !== 'PGRST116') {
-        // Real error, not just "no rows returned"
-        console.error("Error checking profile:", profileCheckError);
-        throw profileCheckError;
-      }
-      
-      if (profileData) {
-        // Profile exists, update it
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ 
-            role,
-            first_name: firstName,
-            last_name: lastName,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingUser.id);
-        
-        if (updateError) {
-          console.error("Error updating profile:", updateError);
-          throw updateError;
-        }
-        
-        return {
-          success: true,
-          message: `User ${email} already exists and has been updated to role: ${role}`
-        };
-      } else {
-        // User exists but profile doesn't, create profile
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({ 
-            id: existingUser.id,
-            role,
-            first_name: firstName,
-            last_name: lastName
-          });
-        
-        if (insertError) {
-          console.error("Error creating profile:", insertError);
-          throw insertError;
-        }
-        
-        return {
-          success: true,
-          message: `User ${email} already exists and profile has been created with role: ${role}`
-        };
-      }
-    }
+    // Instead of using admin.listUsers with filters (which doesn't exist in the type),
+    // we'll use a different approach to check if the user exists
     
     // Attempt to sign in with the credentials to see if user exists
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
