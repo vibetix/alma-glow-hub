@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +17,7 @@ const TestUsers = () => {
   // Check if test users already exist
   const checkExistingUsers = async () => {
     try {
-      const emails = ['admin@almabeauty.com', 'staff@almabeauty.com', 'user@almabeauty.com'];
+      const emails = ['info@almabeautyspa.com', 'staff@almabeautyspa.com', 'user@almabeautyspa.com'];
       
       // Since we can't query by email in profiles table, we'll check via auth.users
       // But we need to get each one individually and check their role from profiles
@@ -26,7 +25,7 @@ const TestUsers = () => {
       
       // Check for admin user
       const { data: adminData } = await supabase.auth.signInWithPassword({
-        email: 'admin@almabeauty.com',
+        email: 'info@almabeautyspa.com',
         password: 'password123'
       });
       
@@ -48,7 +47,7 @@ const TestUsers = () => {
       
       // Check for staff user
       const { data: staffData } = await supabase.auth.signInWithPassword({
-        email: 'staff@almabeauty.com',
+        email: 'staff@almabeautyspa.com',
         password: 'password123'
       });
       
@@ -70,7 +69,7 @@ const TestUsers = () => {
       
       // Check for regular user
       const { data: userData } = await supabase.auth.signInWithPassword({
-        email: 'user@almabeauty.com',
+        email: 'user@almabeautyspa.com',
         password: 'password123'
       });
       
@@ -143,19 +142,19 @@ const TestUsers = () => {
                   <span className="mr-2">
                     {status.admin && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                   </span>
-                  <span><strong>Admin:</strong> admin@almabeauty.com / password123</span>
+                  <span><strong>Admin:</strong> info@almabeautyspa.com / password123</span>
                 </li>
                 <li className="flex items-center">
                   <span className="mr-2">
                     {status.staff && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                   </span>
-                  <span><strong>Staff:</strong> staff@almabeauty.com / password123</span>
+                  <span><strong>Staff:</strong> staff@almabeautyspa.com / password123</span>
                 </li>
                 <li className="flex items-center">
                   <span className="mr-2">
                     {status.user && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                   </span>
-                  <span><strong>User:</strong> user@almabeauty.com / password123</span>
+                  <span><strong>User:</strong> user@almabeautyspa.com / password123</span>
                 </li>
               </ul>
             </div>

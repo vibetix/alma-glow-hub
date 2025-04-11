@@ -172,21 +172,21 @@ export const createTestUser = async (
 export const createAllTestUsers = async () => {
   const users = [
     {
-      email: 'admin@almabeauty.com',
+      email: 'info@almabeautyspa.com',
       password: 'password123',
       firstName: 'Admin',
       lastName: 'User',
       role: 'admin' as const
     },
     {
-      email: 'staff@almabeauty.com',
+      email: 'staff@almabeautyspa.com',
       password: 'password123',
       firstName: 'Staff',
       lastName: 'Member',
       role: 'staff' as const
     },
     {
-      email: 'user@almabeauty.com',
+      email: 'user@almabeautyspa.com',
       password: 'password123',
       firstName: 'Regular',
       lastName: 'User',
@@ -216,7 +216,7 @@ export const createAllTestUsers = async () => {
  */
 export const createAdminUser = async () => {
   const result = await createTestUser(
-    'admin@almabeauty.com',
+    'info@almabeautyspa.com',
     'password123',
     'Admin',
     'User',

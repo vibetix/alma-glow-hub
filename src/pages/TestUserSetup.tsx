@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,7 +61,7 @@ const TestUserSetup = () => {
               <div>
                 <p className="mb-2 font-medium">The following account will be created:</p>
                 <div className="bg-gray-100 p-4 rounded-md">
-                  <p><strong>Email:</strong> admin@almabeauty.com</p>
+                  <p><strong>Email:</strong> info@almabeautyspa.com</p>
                   <p><strong>Password:</strong> password123</p>
                   <p><strong>Role:</strong> Admin</p>
                 </div>
