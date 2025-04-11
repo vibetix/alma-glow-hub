@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -32,7 +33,7 @@ export const createTestUser = async (
       
       try {
         // Update the profile directly with a more reliable method
-        const { data: updateData, error: updateError } = await supabase
+        const { error: updateError } = await supabase
           .from('profiles')
           .update({ 
             role,
@@ -57,7 +58,7 @@ export const createTestUser = async (
           success: true,
           message: `User with email ${email} already exists and has been updated to role: ${role}`
         };
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error in profile update:", error);
         // If we can't update, at least let them know the user exists
         return {
@@ -113,7 +114,7 @@ export const createTestUser = async (
       }
       
       console.log("Profile created or updated through RPC function:", profileData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating/updating profile through RPC:', error);
       return {
         success: false,
@@ -125,7 +126,7 @@ export const createTestUser = async (
       success: true,
       message: `Successfully created ${role} user with email ${email}`
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating test user:', error);
     return {
       success: false,
