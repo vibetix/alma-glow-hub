@@ -1,4 +1,3 @@
-
 import { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthService } from '@/hooks/use-auth-service';
@@ -33,59 +32,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Redirect based on user role with more strict logic
   useEffect(() => {
     // Only redirect if we're done loading and have profile data
-    if (!isLoading && user) {
+    if (!isLoading && user && profile?.role) {
       const path = location.pathname;
       
       // Handle redirection from login page or home page
       if (path === '/login' || path === '/') {
         console.log(`User authenticated, redirecting user with ID ${user.id} to their dashboard`);
-        
-        // If we have a profile with role, use it for redirection
-        if (profile?.role) {
-          console.log(`User has role ${profile.role}, redirecting to appropriate dashboard`);
-          redirectBasedOnRole(profile);
-        } else {
-          // Default to user dashboard if no profile/role available
-          console.log(`No profile/role available, redirecting to default dashboard`);
-          navigate('/user/dashboard');
-        }
+        console.log(`User has role ${profile.role}, redirecting to appropriate dashboard`);
+        redirectBasedOnRole(profile);
         return;
       }
       
-      // Additional checks for unauthorized access
-      if (profile?.role) {
-        if (path.startsWith('/admin') && profile.role !== 'admin') {
-          toast({
-            title: "Access Denied",
-            description: "You do not have permission to access the admin dashboard.",
-            variant: "destructive",
-          });
-          navigate(getDashboardLink(profile));
-          return;
-        }
-        
-        if (path.startsWith('/staff') && profile.role !== 'staff') {
-          toast({
-            title: "Access Denied",
-            description: "You do not have permission to access the staff dashboard.",
-            variant: "destructive",
-          });
-          navigate(getDashboardLink(profile));
-          return;
-        }
-        
-        if (path.startsWith('/user') && profile.role !== 'user') {
-          toast({
-            title: "Access Denied",
-            description: "You do not have permission to access the user dashboard.",
-            variant: "destructive",
-          });
-          navigate(getDashboardLink(profile));
-          return;
-        }
+      // Redirect from incorrect role-specific routes
+      const isUserRoute = path.startsWith('/user');
+      const isAdminRoute = path.startsWith('/admin');
+      const isStaffRoute = path.startsWith('/staff');
+      
+      if (isUserRoute && profile.role !== 'user') {
+        toast({
+          title: "Access Denied",
+          description: "You do not have permission to access the user dashboard.",
+          variant: "destructive",
+        });
+        redirectBasedOnRole(profile);
+        return;
+      }
+      
+      if (isAdminRoute && profile.role !== 'admin') {
+        toast({
+          title: "Access Denied",
+          description: "You do not have permission to access the admin dashboard.",
+          variant: "destructive",
+        });
+        redirectBasedOnRole(profile);
+        return;
+      }
+      
+      if (isStaffRoute && profile.role !== 'staff') {
+        toast({
+          title: "Access Denied",
+          description: "You do not have permission to access the staff dashboard.",
+          variant: "destructive",
+        });
+        redirectBasedOnRole(profile);
+        return;
       }
     }
-  }, [profile, isLoading, user, redirectBasedOnRole, navigate, location.pathname, getDashboardLink]);
+  }, [profile, isLoading, user, redirectBasedOnRole, navigate, location.pathname]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);

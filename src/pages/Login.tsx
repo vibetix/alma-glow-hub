@@ -25,10 +25,10 @@ const loginSchema = z.object({
 });
 
 const Login = () => {
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, profile } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { getDashboardLink } = useAuthNavigation();
+  const { redirectBasedOnRole } = useAuthNavigation();
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -50,12 +50,8 @@ const Login = () => {
           description: "Redirecting to your dashboard...",
         });
         
-        // Manual navigation after successful login
-        // This is a backup in case the auth context redirect doesn't trigger
-        setTimeout(() => {
-          // Force redirect to a general page, the auth context will handle proper redirection
-          navigate('/user/dashboard');
-        }, 800);
+        // Let the AuthContext handle the redirection based on role
+        // No need to manually navigate here as the AuthContext will do it
       } else {
         toast({
           title: "Login Failed",

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 
 type UserProtectedRouteProps = {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ type UserProtectedRouteProps = {
 export const UserProtectedRoute = ({ children }: UserProtectedRouteProps) => {
   const { user, profile, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const { redirectBasedOnRole } = useAuthNavigation();
 
   useEffect(() => {
     // Don't redirect while still loading
@@ -28,16 +30,16 @@ export const UserProtectedRoute = ({ children }: UserProtectedRouteProps) => {
       return;
     }
 
-    // This is specifically for user routes
-    if (profile?.role !== 'user') {
+    // This is specifically for user routes - redirect if user has a different role
+    if (profile && profile.role !== 'user') {
       toast({
         title: "Access denied",
         description: "This page is only for regular users",
         variant: "destructive",
       });
-      navigate('/');
+      redirectBasedOnRole(profile);
     }
-  }, [isAuthenticated, isLoading, navigate, user, profile]);
+  }, [isAuthenticated, isLoading, navigate, user, profile, redirectBasedOnRole]);
 
   // Show loading spinner while checking auth status
   if (isLoading) {
