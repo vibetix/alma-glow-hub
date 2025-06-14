@@ -58,13 +58,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const redirectUserBasedOnRole = (userProfile: any) => {
+  const redirectUserBasedOnRole = (userProfile: any, isSignIn: boolean = false) => {
     if (!userProfile) {
       console.log("No profile, staying on current page");
       return;
     }
 
-    console.log(`Redirecting user with role: ${userProfile.role}`);
+    // Only redirect on sign in events, not on page loads
+    if (!isSignIn) {
+      return;
+    }
+
+    console.log(`Redirecting user with role: ${userProfile.role} after sign in`);
     
     // Admin users go to admin dashboard
     if (userProfile.role === 'admin') {
@@ -102,6 +107,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (userProfile && mounted) {
               setProfile(userProfile);
               setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
+              
+              // Only redirect on SIGNED_IN event (actual login)
+              if (event === 'SIGNED_IN') {
+                redirectUserBasedOnRole(userProfile, true);
+              }
             }
           }, 0);
         } else {
@@ -186,21 +196,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
-        console.log("Login successful");
-        
-        // Fetch profile to determine redirect
-        const userProfile = await fetchProfile(data.user.id);
+        console.log("Login successful - auth state change will handle redirect");
         
         toast({
           title: "Login successful",
           description: "Welcome back!",
         });
         
-        // Redirect based on role after a short delay
-        setTimeout(() => {
-          redirectUserBasedOnRole(userProfile);
-        }, 500);
-        
+        // Don't redirect here - let the onAuthStateChange handler do it
         return true;
       }
       
