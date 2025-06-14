@@ -9,6 +9,7 @@ export const useAuthState = () => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoginRedirectPending, setIsLoginRedirectPending] = useState(false);
   const { fetchProfile } = useAuthService();
   
   useEffect(() => {
@@ -34,20 +35,26 @@ export const useAuthState = () => {
               };
               
               setUser(authUser);
+              console.log("User set, now fetching profile...");
               
-              // Fetch profile in the background
+              // Fetch profile immediately after setting user
               try {
                 const userProfile = await fetchProfile(session.user.id);
                 if (mounted && userProfile) {
+                  console.log("Profile loaded:", userProfile.role);
                   setProfile(userProfile);
                   setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
+                } else {
+                  console.log("No profile found for user");
                 }
               } catch (error) {
                 console.error("Error fetching profile:", error);
               }
             } else {
+              console.log("No session, clearing user and profile");
               setUser(null);
               setProfile(null);
+              setIsLoginRedirectPending(false);
             }
             
             if (mounted) {
@@ -69,6 +76,7 @@ export const useAuthState = () => {
         
         // If we have a session but the auth state change hasn't fired yet
         if (session?.user && mounted) {
+          console.log("Initial session found, setting up user...");
           const authUser: AuthUser = {
             id: session.user.id,
             email: session.user.email,
@@ -81,6 +89,7 @@ export const useAuthState = () => {
           try {
             const userProfile = await fetchProfile(session.user.id);
             if (mounted && userProfile) {
+              console.log("Initial profile loaded:", userProfile.role);
               setProfile(userProfile);
               setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
             }
@@ -111,7 +120,7 @@ export const useAuthState = () => {
     return () => {
       mounted = false;
     };
-  }, []); // Remove fetchProfile dependency to avoid recreation
+  }, [fetchProfile]);
 
   return {
     user,
@@ -120,5 +129,7 @@ export const useAuthState = () => {
     setProfile,
     isLoading,
     setIsLoading,
+    isLoginRedirectPending,
+    setIsLoginRedirectPending,
   };
 };

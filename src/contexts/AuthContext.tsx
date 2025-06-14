@@ -3,7 +3,6 @@ import { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthService } from '@/hooks/use-auth-service';
 import { useAuthState } from '@/hooks/use-auth-state';
-import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 import { AuthContextType } from '@/types/auth';
 import { toast } from '@/hooks/use-toast';
 
@@ -18,7 +17,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isLoading, 
     setUser, 
     setProfile, 
-    setIsLoading 
+    setIsLoading,
+    isLoginRedirectPending,
+    setIsLoginRedirectPending
   } = useAuthState();
   
   const { 
@@ -26,15 +27,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signup: authSignup, 
     logout: authLogout 
   } = useAuthService();
-  
-  const { redirectBasedOnRole } = useAuthNavigation();
 
-  // Handle role-based redirection only for unauthorized access to protected routes
+  // Handle post-login redirection when both user and profile are loaded
+  useEffect(() => {
+    if (!isLoading && user && profile && isLoginRedirectPending) {
+      console.log(`Post-login redirect: User role is ${profile.role}`);
+      
+      setIsLoginRedirectPending(false);
+      
+      // Role-based redirection
+      switch (profile.role) {
+        case 'admin':
+          console.log('Redirecting admin to /admin');
+          navigate('/admin');
+          break;
+        case 'staff':
+          console.log('Redirecting staff to /staff');
+          navigate('/staff');
+          break;
+        case 'user':
+        default:
+          console.log('Redirecting user to /user/dashboard');
+          navigate('/user/dashboard');
+          break;
+      }
+    }
+  }, [user, profile, isLoading, isLoginRedirectPending, navigate, setIsLoginRedirectPending]);
+
+  // Handle role-based access control for protected routes
   useEffect(() => {
     if (!isLoading && user && profile?.role) {
       const path = location.pathname;
       
-      // Only redirect from incorrect role-specific routes, not from login or home
+      // Only redirect from incorrect role-specific routes
       const isUserRoute = path.startsWith('/user');
       const isAdminRoute = path.startsWith('/admin');
       const isStaffRoute = path.startsWith('/staff');
@@ -46,7 +71,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "You do not have permission to access the user dashboard.",
           variant: "destructive",
         });
-        redirectBasedOnRole(profile);
+        
+        // Redirect to appropriate dashboard
+        switch (profile.role) {
+          case 'admin':
+            navigate('/admin');
+            break;
+          case 'staff':
+            navigate('/staff');
+            break;
+        }
         return;
       }
       
@@ -57,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "You do not have permission to access the admin dashboard.",
           variant: "destructive",
         });
-        redirectBasedOnRole(profile);
+        navigate('/user/dashboard');
         return;
       }
       
@@ -68,11 +102,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "You do not have permission to access the staff dashboard.",
           variant: "destructive",
         });
-        redirectBasedOnRole(profile);
+        navigate('/user/dashboard');
         return;
       }
     }
-  }, [profile, isLoading, user, redirectBasedOnRole, location.pathname]);
+  }, [profile, isLoading, user, location.pathname, navigate]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
@@ -80,19 +114,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const success = await authLogin(email, password);
       
       if (success) {
-        console.log("Login successful, redirecting based on role...");
-        
-        // Simple redirect logic - let the auth state change handle the redirection
-        setTimeout(() => {
-          if (profile) {
-            console.log(`Redirecting user with role: ${profile.role}`);
-            redirectBasedOnRole(profile);
-          } else {
-            // Fallback redirect
-            navigate('/user/dashboard');
-          }
-        }, 1000);
-        
+        console.log("Login successful, setting redirect flag");
+        setIsLoginRedirectPending(true);
         return true;
       }
       
@@ -128,6 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setUser(null);
       setProfile(null);
+      setIsLoginRedirectPending(false);
       await authLogout();
     } finally {
       setIsLoading(false);
