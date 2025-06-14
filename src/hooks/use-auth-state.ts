@@ -41,7 +41,7 @@ export const useAuthState = () => {
               try {
                 const userProfile = await fetchProfile(session.user.id);
                 if (mounted && userProfile) {
-                  console.log("Profile loaded:", userProfile.role);
+                  console.log("Profile loaded with role:", userProfile.role);
                   setProfile(userProfile);
                   setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
                 } else {
@@ -89,7 +89,7 @@ export const useAuthState = () => {
           try {
             const userProfile = await fetchProfile(session.user.id);
             if (mounted && userProfile) {
-              console.log("Initial profile loaded:", userProfile.role);
+              console.log("Initial profile loaded with role:", userProfile.role);
               setProfile(userProfile);
               setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
             }

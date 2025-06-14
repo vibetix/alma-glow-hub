@@ -35,20 +35,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       setIsLoginRedirectPending(false);
       
-      // Role-based redirection
+      // Role-based redirection - ensure correct paths
       switch (profile.role) {
         case 'admin':
           console.log('Redirecting admin to /admin');
-          navigate('/admin');
+          navigate('/admin', { replace: true });
           break;
         case 'staff':
           console.log('Redirecting staff to /staff');
-          navigate('/staff');
+          navigate('/staff', { replace: true });
           break;
         case 'user':
         default:
           console.log('Redirecting user to /user/dashboard');
-          navigate('/user/dashboard');
+          navigate('/user/dashboard', { replace: true });
           break;
       }
     }
@@ -75,10 +75,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Redirect to appropriate dashboard
         switch (profile.role) {
           case 'admin':
-            navigate('/admin');
+            navigate('/admin', { replace: true });
             break;
           case 'staff':
-            navigate('/staff');
+            navigate('/staff', { replace: true });
             break;
         }
         return;
@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "You do not have permission to access the admin dashboard.",
           variant: "destructive",
         });
-        navigate('/user/dashboard');
+        navigate('/user/dashboard', { replace: true });
         return;
       }
       
@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "You do not have permission to access the staff dashboard.",
           variant: "destructive",
         });
-        navigate('/user/dashboard');
+        navigate('/user/dashboard', { replace: true });
         return;
       }
     }
