@@ -33,27 +33,9 @@ import Staff from "./pages/admin/Staff";
 import TestUsers from "./pages/admin/TestUsers";
 import StaffManagement from "./pages/admin/StaffManagement";
 
-// User Pages
-import UserDashboard from "./pages/user/Dashboard";
-import UserAppointments from "./pages/user/Appointments";
-import UserOrders from "./pages/user/Orders";
-import UserProfile from "./pages/user/Profile";
-
-// Staff Pages
-import StaffDashboard from "./pages/staff/Dashboard";
-import StaffSchedule from "./pages/staff/Schedule";
-import StaffClients from "./pages/staff/Clients";
-import StaffServices from "./pages/staff/Services";
-import StaffMessages from "./pages/staff/Messages";
-import StaffTimeManagement from "./pages/staff/TimeManagement";
-import StaffPerformance from "./pages/staff/Performance";
-import StaffSettings from "./pages/staff/Settings";
-
 // Auth components
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { UserProtectedRoute } from "@/components/UserProtectedRoute";
-import { StaffProtectedRoute } from "@/components/StaffProtectedRoute";
 import TestUserSetup from "./pages/TestUserSetup";
 
 const queryClient = new QueryClient();
@@ -79,106 +61,6 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/about" element={<AboutUs />} />
-            
-            {/* User Routes (Protected) */}
-            <Route 
-              path="/user/dashboard" 
-              element={
-                <UserProtectedRoute>
-                  <UserDashboard />
-                </UserProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/user/appointments" 
-              element={
-                <UserProtectedRoute>
-                  <UserAppointments />
-                </UserProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/user/orders" 
-              element={
-                <UserProtectedRoute>
-                  <UserOrders />
-                </UserProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/user/profile" 
-              element={
-                <UserProtectedRoute>
-                  <UserProfile />
-                </UserProtectedRoute>
-              } 
-            />
-            
-            {/* Staff Routes (Protected) */}
-            <Route 
-              path="/staff" 
-              element={
-                <StaffProtectedRoute>
-                  <StaffDashboard />
-                </StaffProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/staff/schedule" 
-              element={
-                <StaffProtectedRoute>
-                  <StaffSchedule />
-                </StaffProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/staff/clients" 
-              element={
-                <StaffProtectedRoute>
-                  <StaffClients />
-                </StaffProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/staff/services" 
-              element={
-                <StaffProtectedRoute>
-                  <StaffServices />
-                </StaffProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/staff/messages" 
-              element={
-                <StaffProtectedRoute>
-                  <StaffMessages />
-                </StaffProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/staff/time" 
-              element={
-                <StaffProtectedRoute>
-                  <StaffTimeManagement />
-                </StaffProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/staff/performance" 
-              element={
-                <StaffProtectedRoute>
-                  <StaffPerformance />
-                </StaffProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/staff/settings" 
-              element={
-                <StaffProtectedRoute>
-                  <StaffSettings />
-                </StaffProtectedRoute>
-              } 
-            />
             
             {/* Admin Routes (Protected) */}
             <Route 

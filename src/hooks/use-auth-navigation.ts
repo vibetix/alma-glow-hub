@@ -6,52 +6,31 @@ export const useAuthNavigation = () => {
   const navigate = useNavigate();
 
   const redirectBasedOnRole = (profile: Profile | null) => {
-    if (!profile) return;
+    if (!profile) {
+      navigate('/');
+      return;
+    }
     
-    console.log(`Redirecting to role-specific dashboard: ${profile.role}`);
+    console.log(`Redirecting based on role: ${profile.role}`);
     
-    switch (profile.role) {
-      case 'admin':
-        navigate('/admin');
-        break;
-      case 'staff':
-        navigate('/staff');
-        break;
-      case 'user':
-        navigate('/user/dashboard');
-        break;
-      default:
-        navigate('/user/dashboard');
-        break;
+    if (profile.role === 'admin') {
+      navigate('/admin');
+    } else {
+      // All non-admin users go to home page
+      navigate('/');
     }
   };
 
   const getDashboardLink = (profile: Profile | null) => {
-    if (!profile) return '/user/dashboard';
+    if (!profile || profile.role !== 'admin') return '/';
     
-    switch (profile.role) {
-      case 'admin':
-        return '/admin';
-      case 'staff':
-        return '/staff';
-      case 'user':
-      default:
-        return '/user/dashboard';
-    }
+    return '/admin';
   };
 
   const getProfileLink = (profile: Profile | null) => {
-    if (!profile) return '/user/profile';
+    if (!profile || profile.role !== 'admin') return '/';
     
-    switch (profile.role) {
-      case 'admin':
-        return '/admin/settings';
-      case 'staff':
-        return '/staff/settings';
-      case 'user':
-      default:
-        return '/user/profile';
-    }
+    return '/admin/settings';
   };
 
   return {

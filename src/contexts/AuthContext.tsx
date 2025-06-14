@@ -63,13 +63,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await fetchProfile(session.user.id);
           
           if (event === 'SIGNED_IN') {
-            // Redirect based on role
+            // Only redirect admins to admin dashboard, others go to home
             if (profile?.role === 'admin') {
               navigate('/admin');
-            } else if (profile?.role === 'staff') {
-              navigate('/staff');
             } else {
-              navigate('/user/dashboard');
+              navigate('/');
             }
           }
         } else {
