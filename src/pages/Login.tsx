@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,8 +20,8 @@ import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  email: z.string().min(1, "Email is required").email({ message: "Please enter a valid email address" }),
+  password: z.string().min(1, "Password is required").min(6, { message: "Password must be at least 6 characters" }),
 });
 
 const Login = () => {
@@ -37,27 +37,19 @@ const Login = () => {
   });
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
-    console.log("Login form submitted for:", values.email);
-    
     if (isSubmitting || isLoading) {
-      console.log("Already submitting or loading, skipping");
       return;
     }
 
+    console.log("Form submitted with:", { email: values.email, hasPassword: !!values.password });
+    
     setIsSubmitting(true);
     
     try {
-      console.log(`Attempting login for email: ${values.email}`);
       const success = await login(values.email, values.password);
       
-      console.log("Login attempt result:", success);
-      
-      if (success) {
-        console.log("Login successful, user should be redirected automatically");
-        // Success toast is handled in auth service
-      } else {
+      if (!success) {
         console.log("Login failed");
-        // Error toast is handled in auth service
       }
     } catch (error) {
       console.error("Login error in component:", error);
@@ -148,6 +140,20 @@ const Login = () => {
                 </Button>
               </form>
             </Form>
+            
+            <div className="mt-6">
+              <div className="text-center">
+                <span className="text-sm text-gray-600">
+                  Don't have an account?{' '}
+                  <Link
+                    to="/signup"
+                    className="font-medium text-alma-gold hover:text-alma-gold/80"
+                  >
+                    Sign up
+                  </Link>
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
