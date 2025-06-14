@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const redirectUserBasedOnRole = (userProfile: any) => {
     if (!userProfile) {
-      navigate('/');
+      console.log("No profile, staying on current page");
       return;
     }
 
@@ -70,11 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (userProfile.role === 'admin') {
       navigate('/admin');
     } 
-    // Staff users can be added later
-    else if (userProfile.role === 'staff') {
-      navigate('/user');
-    }
-    // Regular users go to user dashboard
+    // Regular users and staff go to user dashboard
     else {
       navigate('/user');
     }
@@ -200,10 +196,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: "Welcome back!",
         });
         
-        // Redirect based on role
+        // Redirect based on role after a short delay
         setTimeout(() => {
           redirectUserBasedOnRole(userProfile);
-        }, 100);
+        }, 500);
         
         return true;
       }

@@ -2,20 +2,21 @@
 import { Profile } from '@/types/database';
 
 export const getDashboardLink = (profile: Profile | null) => {
-  if (!profile) return '/';
+  if (!profile) return '/login';
   
   if (profile.role === 'admin') return '/admin';
-  if (profile.role === 'staff') return '/user'; // Staff can use user dashboard for now
   
-  return '/user'; // Regular users go to user dashboard
+  // All other users (including staff) go to user dashboard
+  return '/user';
 };
 
 export const getProfileLink = (profile: Profile | null) => {
-  if (!profile) return '/';
+  if (!profile) return '/login';
   
   if (profile.role === 'admin') return '/admin/settings';
   
-  return '/user/profile'; // All non-admin users go to user profile
+  // All non-admin users go to user profile
+  return '/user/profile';
 };
 
 export const redirectAfterLogin = (profile: Profile | null) => {
@@ -23,5 +24,6 @@ export const redirectAfterLogin = (profile: Profile | null) => {
   
   if (profile.role === 'admin') return '/admin';
   
-  return '/user'; // All other users go to user dashboard
+  // All other users go to user dashboard
+  return '/user';
 };

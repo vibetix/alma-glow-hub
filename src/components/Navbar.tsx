@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, ShoppingCart, User, LogOut } from 'lucide-react';
@@ -166,7 +165,7 @@ export const Navbar = () => {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to={getDashboardLink(profile)}>
-                    {profile?.role === 'admin' ? 'Admin Dashboard' : profile?.role === 'staff' ? 'Staff Dashboard' : 'My Dashboard'}
+                    {profile?.role === 'admin' ? 'Admin Dashboard' : 'My Dashboard'}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -247,7 +246,7 @@ export const Navbar = () => {
                     className="flex items-center text-alma-darkGreen"
                   >
                     <User size={20} className="mr-2" /> 
-                    {profile?.role === 'admin' ? 'Admin Dashboard' : profile?.role === 'staff' ? 'Staff Dashboard' : 'My Dashboard'}
+                    {profile?.role === 'admin' ? 'Admin Dashboard' : 'My Dashboard'}
                   </Link>
                   <button
                     onClick={handleLogout}
