@@ -15,7 +15,6 @@ interface AuthContextType {
   profile: any | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   signup: (email: string, password: string, firstName: string, lastName: string) => Promise<boolean>;
@@ -34,8 +33,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   const fetchProfile = async (userId: string) => {
@@ -60,72 +58,124 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const handleAuthStateChange = async (session: any) => {
-    console.log("Auth state change:", session?.user?.id);
-    
-    if (session?.user) {
-      const authUser = {
-        ...session.user,
-        name: session.user.user_metadata?.first_name || session.user.email?.split('@')[0] || 'User'
-      };
-      
-      setUser(authUser);
-      
-      // Fetch profile
-      const userProfile = await fetchProfile(session.user.id);
-      setProfile(userProfile);
-      
-      if (userProfile) {
-        setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
-        
-        // Only redirect admin users to admin dashboard
-        if (userProfile.role === 'admin' && isInitialized) {
-          console.log("Redirecting admin to dashboard");
-          navigate('/admin');
-        }
-      }
-    } else {
-      console.log("No session, clearing user state");
-      setUser(null);
-      setProfile(null);
+  const redirectUserBasedOnRole = (userProfile: any) => {
+    if (!userProfile) {
+      navigate('/');
+      return;
     }
+
+    console.log(`Redirecting user with role: ${userProfile.role}`);
     
-    setLoading(false);
+    // Admin users go to admin dashboard
+    if (userProfile.role === 'admin') {
+      navigate('/admin');
+    } 
+    // Staff users can be added later
+    else if (userProfile.role === 'staff') {
+      navigate('/user');
+    }
+    // Regular users go to user dashboard
+    else {
+      navigate('/user');
+    }
   };
 
   useEffect(() => {
     let mounted = true;
     
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted) {
-        handleAuthStateChange(session);
-        setIsInitialized(true);
-      }
-    });
-
-    // Listen for changes
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Auth event:", event);
+        console.log("Auth event:", event, session?.user?.id);
+        
+        if (!mounted) return;
+        
+        if (session?.user) {
+          const authUser = {
+            ...session.user,
+            name: session.user.user_metadata?.first_name || 
+                  `${session.user.user_metadata?.first_name || ''} ${session.user.user_metadata?.last_name || ''}`.trim() ||
+                  session.user.email?.split('@')[0] || 'User'
+          };
+          
+          setUser(authUser);
+          
+          // Fetch profile after setting user
+          setTimeout(async () => {
+            const userProfile = await fetchProfile(session.user.id);
+            if (userProfile && mounted) {
+              setProfile(userProfile);
+              setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
+            }
+          }, 0);
+        } else {
+          console.log("No session, clearing user state");
+          setUser(null);
+          setProfile(null);
+        }
+        
         if (mounted) {
-          await handleAuthStateChange(session);
+          setIsLoading(false);
         }
       }
     );
 
+    // Get initial session
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user && mounted) {
+          const authUser = {
+            ...session.user,
+            name: session.user.user_metadata?.first_name || 
+                  `${session.user.user_metadata?.first_name || ''} ${session.user.user_metadata?.last_name || ''}`.trim() ||
+                  session.user.email?.split('@')[0] || 'User'
+          };
+          
+          setUser(authUser);
+          
+          const userProfile = await fetchProfile(session.user.id);
+          if (userProfile && mounted) {
+            setProfile(userProfile);
+            setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
+          }
+        }
+        
+        if (mounted) {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+    
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       console.log("Login attempt for:", email);
       
+      if (!email.trim() || !password.trim()) {
+        toast({
+          title: "Login failed",
+          description: "Please enter both email and password",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
       
@@ -141,10 +191,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (data.user) {
         console.log("Login successful");
+        
+        // Fetch profile to determine redirect
+        const userProfile = await fetchProfile(data.user.id);
+        
         toast({
           title: "Login successful",
           description: "Welcome back!",
         });
+        
+        // Redirect based on role
+        setTimeout(() => {
+          redirectUserBasedOnRole(userProfile);
+        }, 100);
+        
         return true;
       }
       
@@ -164,14 +224,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        toast({
-          title: "Logout failed",
-          description: error.message,
-          variant: "destructive",
-        });
         throw error;
       }
+      
+      setUser(null);
+      setProfile(null);
       navigate('/');
+      
       toast({
         title: "Logged out",
         description: "You have been successfully logged out",
@@ -188,14 +247,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (email: string, password: string, firstName: string, lastName: string): Promise<boolean> => {
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
+      if (!email.trim() || !password.trim() || !firstName.trim() || !lastName.trim()) {
+        toast({
+          title: "Signup failed",
+          description: "Please fill in all fields",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
         password,
         options: {
           data: {
-            first_name: firstName,
-            last_name: lastName,
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
           },
+          emailRedirectTo: `${window.location.origin}/`,
         },
       });
       
@@ -208,11 +277,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      toast({
-        title: "Signup successful",
-        description: "Please check your email to verify your account",
-      });
-      return true;
+      if (data.user) {
+        toast({
+          title: "Account created!",
+          description: "Please check your email to verify your account, then you can login.",
+        });
+        return true;
+      }
+
+      return false;
     } catch (error: any) {
       toast({
         title: "Signup failed",
@@ -227,8 +300,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     profile,
     isAuthenticated: !!user,
-    isLoading: loading,
-    loading,
+    isLoading,
     login,
     logout,
     signup,

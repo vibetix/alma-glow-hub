@@ -16,17 +16,21 @@ import {
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageTransition } from '@/components/PageTransition';
-import { Loader2 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 const loginSchema = z.object({
-  email: z.string().min(1, "Email is required").email({ message: "Please enter a valid email address" }),
-  password: z.string().min(1, "Password is required").min(6, { message: "Password must be at least 6 characters" }),
+  email: z.string()
+    .min(1, "Email is required")
+    .email({ message: "Please enter a valid email address" }),
+  password: z.string()
+    .min(1, "Password is required")
+    .min(6, { message: "Password must be at least 6 characters" }),
 });
 
 const Login = () => {
   const { login, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -43,20 +47,29 @@ const Login = () => {
 
     console.log("Form submitted with:", { email: values.email, hasPassword: !!values.password });
     
+    // Client-side validation
+    if (!values.email.trim() || !values.password.trim()) {
+      form.setError('root', {
+        message: 'Please fill in all fields'
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
-      const success = await login(values.email, values.password);
+      const success = await login(values.email.trim(), values.password);
       
       if (!success) {
         console.log("Login failed");
+        form.setError('root', {
+          message: 'Invalid email or password'
+        });
       }
     } catch (error) {
       console.error("Login error in component:", error);
-      toast({
-        title: "Login Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
+      form.setError('root', {
+        message: 'An unexpected error occurred. Please try again.'
       });
     } finally {
       setIsSubmitting(false);
@@ -70,6 +83,13 @@ const Login = () => {
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
+            <Link to="/">
+              <img 
+                src="/lovable-uploads/fb6df437-d752-46c4-9f14-60e6145c5695.png" 
+                alt="Alma Beauty Logo" 
+                className="h-16 mx-auto mb-4"
+              />
+            </Link>
             <h1 className="mt-6 text-3xl font-serif font-bold text-gray-900">Welcome Back</h1>
             <p className="mt-2 text-sm text-gray-600">
               Sign in to your Alma Beauty Spa account
@@ -79,16 +99,24 @@ const Login = () => {
           <div className="mt-8 bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {form.formState.errors.root && (
+                  <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                    {form.formState.errors.root.message}
+                  </div>
+                )}
+                
                 <FormField
                   control={form.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>Email Address</FormLabel>
                       <FormControl>
                         <Input 
+                          type="email"
                           placeholder="your.email@example.com" 
                           disabled={isFormDisabled}
+                          autoComplete="email"
                           {...field} 
                         />
                       </FormControl>
@@ -104,12 +132,29 @@ const Login = () => {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="password" 
-                          placeholder="••••••••" 
-                          disabled={isFormDisabled}
-                          {...field} 
-                        />
+                        <div className="relative">
+                          <Input 
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••" 
+                            disabled={isFormDisabled}
+                            autoComplete="current-password"
+                            {...field} 
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                            disabled={isFormDisabled}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4 text-gray-400" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -149,7 +194,7 @@ const Login = () => {
                     to="/signup"
                     className="font-medium text-alma-gold hover:text-alma-gold/80"
                   >
-                    Sign up
+                    Create an account
                   </Link>
                 </span>
               </div>
