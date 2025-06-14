@@ -16,13 +16,12 @@ export const useAuthState = () => {
     
     const setupAuth = async () => {
       try {
-        // Set up auth state listener FIRST
+        // Set up auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
             console.log("Auth state changed:", event);
             
             if (session?.user && mounted) {
-              // Format the user data to match our AuthUser type
               const authUser: AuthUser = {
                 id: session.user.id,
                 email: session.user.email,
@@ -32,33 +31,26 @@ export const useAuthState = () => {
               
               setUser(authUser);
               
-              // Use setTimeout to avoid potential deadlock with Supabase
-              setTimeout(async () => {
-                try {
-                  if (!mounted) return;
+              // Fetch profile data immediately
+              try {
+                console.log("Fetching profile for user:", authUser.id);
+                const userProfile = await fetchProfile(session.user.id);
+                console.log("Profile fetched:", userProfile);
+                
+                if (mounted) {
+                  setProfile(userProfile);
                   
-                  console.log("Fetching profile for user:", authUser.id);
-                  const userProfile = await fetchProfile(session.user.id);
-                  console.log("Profile fetched:", userProfile);
-                  
-                  if (mounted) {
-                    setProfile(userProfile);
-                    
-                    if (userProfile) {
-                      // Update user object with role from profile
-                      setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
-                    }
-                    
-                    // Always make sure to set isLoading to false, even if profile fetch fails
-                    setIsLoading(false);
-                  }
-                } catch (error) {
-                  console.error("Error fetching profile:", error);
-                  if (mounted) {
-                    setIsLoading(false);
+                  if (userProfile) {
+                    setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
                   }
                 }
-              }, 0);
+              } catch (error) {
+                console.error("Error fetching profile:", error);
+              } finally {
+                if (mounted) {
+                  setIsLoading(false);
+                }
+              }
             } else if (mounted) {
               setUser(null);
               setProfile(null);
@@ -67,11 +59,10 @@ export const useAuthState = () => {
           }
         );
 
-        // THEN check for existing session
+        // Check for existing session
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user && mounted) {
-          // Format the user data to match our AuthUser type
           const authUser: AuthUser = {
             id: session.user.id,
             email: session.user.email,
@@ -90,21 +81,17 @@ export const useAuthState = () => {
               setProfile(userProfile);
               
               if (userProfile) {
-                // Update user object with role from profile
                 setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
               }
-              
-              // Always ensure we set isLoading to false when we're done
-              setIsLoading(false);
             }
           } catch (error) {
             console.error("Error fetching initial profile:", error);
+          } finally {
             if (mounted) {
               setIsLoading(false);
             }
           }
         } else if (mounted) {
-          // Make sure to set isLoading to false even if there's no session
           setIsLoading(false);
         }
         

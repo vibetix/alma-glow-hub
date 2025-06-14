@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -17,7 +18,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PageTransition } from '@/components/PageTransition';
 import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -25,10 +25,8 @@ const loginSchema = z.object({
 });
 
 const Login = () => {
-  const { login, isLoading, profile } = useAuth();
+  const { login, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const navigate = useNavigate();
-  const { redirectBasedOnRole } = useAuthNavigation();
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -41,6 +39,7 @@ const Login = () => {
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     setIsSubmitting(true);
     try {
+      console.log(`Submitting login form for email: ${values.email}`);
       const success = await login(values.email, values.password);
       
       if (success) {
@@ -49,9 +48,6 @@ const Login = () => {
           title: "Login Successful",
           description: "Redirecting to your dashboard...",
         });
-        
-        // Let the AuthContext handle the redirection based on role
-        // No need to manually navigate here as the AuthContext will do it
       } else {
         toast({
           title: "Login Failed",
@@ -130,26 +126,6 @@ const Login = () => {
                 </Button>
               </form>
             </Form>
-            
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="bg-white px-2 text-gray-500">Or</span>
-                </div>
-              </div>
-              
-              <div className="mt-6">
-                <p className="text-center text-sm">
-                  Don't have an account?{" "}
-                  <Link to="/signup" className="font-medium text-alma-gold hover:text-alma-gold/80">
-                    Sign up
-                  </Link>
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </div>

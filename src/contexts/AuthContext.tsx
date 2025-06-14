@@ -1,3 +1,4 @@
+
 import { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthService } from '@/hooks/use-auth-service';
@@ -5,7 +6,6 @@ import { useAuthState } from '@/hooks/use-auth-state';
 import { useAuthNavigation } from '@/hooks/use-auth-navigation';
 import { AuthContextType } from '@/types/auth';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -27,28 +27,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logout: authLogout 
   } = useAuthService();
   
-  const { redirectBasedOnRole, getDashboardLink } = useAuthNavigation();
+  const { redirectBasedOnRole } = useAuthNavigation();
 
-  // Redirect based on user role with more strict logic
+  // Handle role-based redirection only for unauthorized access to protected routes
   useEffect(() => {
-    // Only redirect if we're done loading and have profile data
     if (!isLoading && user && profile?.role) {
       const path = location.pathname;
       
-      // Handle redirection from login page or home page
-      if (path === '/login' || path === '/') {
-        console.log(`User authenticated, redirecting user with ID ${user.id} to their dashboard`);
-        console.log(`User has role ${profile.role}, redirecting to appropriate dashboard`);
-        redirectBasedOnRole(profile);
-        return;
-      }
-      
-      // Redirect from incorrect role-specific routes
+      // Only redirect from incorrect role-specific routes, not from login or home
       const isUserRoute = path.startsWith('/user');
       const isAdminRoute = path.startsWith('/admin');
       const isStaffRoute = path.startsWith('/staff');
       
       if (isUserRoute && profile.role !== 'user') {
+        console.log(`User with role ${profile.role} trying to access user route, redirecting`);
         toast({
           title: "Access Denied",
           description: "You do not have permission to access the user dashboard.",
@@ -59,6 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (isAdminRoute && profile.role !== 'admin') {
+        console.log(`User with role ${profile.role} trying to access admin route, redirecting`);
         toast({
           title: "Access Denied",
           description: "You do not have permission to access the admin dashboard.",
@@ -69,6 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (isStaffRoute && profile.role !== 'staff') {
+        console.log(`User with role ${profile.role} trying to access staff route, redirecting`);
         toast({
           title: "Access Denied",
           description: "You do not have permission to access the staff dashboard.",
@@ -78,20 +72,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
     }
-  }, [profile, isLoading, user, redirectBasedOnRole, navigate, location.pathname]);
+  }, [profile, isLoading, user, redirectBasedOnRole, location.pathname]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
+      console.log(`Attempting login for email: ${email}`);
       const success = await authLogin(email, password);
       
       if (success) {
-        // Add a small delay to ensure profile data is loaded
-        console.log("Login successful, redirecting with delay to ensure profile is loaded...");
+        console.log("Login successful, waiting for profile to load...");
         
-        // Force a small delay to ensure profile is loaded
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait for profile to be loaded before redirecting
+        let attempts = 0;
+        const maxAttempts = 10;
         
+        const waitForProfile = () => {
+          return new Promise<void>((resolve) => {
+            const checkProfile = () => {
+              attempts++;
+              console.log(`Checking for profile data, attempt ${attempts}`);
+              
+              // Get the current auth state
+              const currentUser = user;
+              const currentProfile = profile;
+              
+              if (currentProfile && currentUser) {
+                console.log(`Profile loaded for user ${currentUser.id} with role: ${currentProfile.role}`);
+                console.log(`Redirecting ${currentProfile.role} to appropriate dashboard`);
+                redirectBasedOnRole(currentProfile);
+                resolve();
+              } else if (attempts >= maxAttempts) {
+                console.log("Max attempts reached, redirecting to default dashboard");
+                navigate('/user/dashboard');
+                resolve();
+              } else {
+                setTimeout(checkProfile, 200);
+              }
+            };
+            checkProfile();
+          });
+        };
+        
+        await waitForProfile();
         return true;
       }
       
