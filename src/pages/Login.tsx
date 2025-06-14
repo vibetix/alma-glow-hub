@@ -37,7 +37,7 @@ const Login = () => {
   });
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
-    console.log("Form submitted with values:", { email: values.email, password: "***" });
+    console.log("Login form submitted for:", values.email);
     
     if (isSubmitting || isLoading) {
       console.log("Already submitting or loading, skipping");
@@ -50,28 +50,21 @@ const Login = () => {
       console.log(`Attempting login for email: ${values.email}`);
       const success = await login(values.email, values.password);
       
-      console.log("Login result:", success);
+      console.log("Login attempt result:", success);
       
       if (success) {
-        console.log("Login successful in Login component");
-        toast({
-          title: "Login Successful",
-          description: "Redirecting to your dashboard...",
-        });
-        // Don't manually redirect here - let AuthContext handle it
+        console.log("Login successful, user should be redirected automatically");
+        // Don't show toast here - auth service already shows it
+        // Don't manually redirect - AuthContext handles it
       } else {
         console.log("Login failed");
-        toast({
-          title: "Login Failed",
-          description: "Invalid email or password.",
-          variant: "destructive",
-        });
+        // Error toast is handled in auth service
       }
     } catch (error) {
       console.error("Login error in component:", error);
       toast({
         title: "Login Error",
-        description: "An unexpected error occurred.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {

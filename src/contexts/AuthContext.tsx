@@ -1,3 +1,4 @@
+
 import { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthService } from '@/hooks/use-auth-service';
@@ -29,34 +30,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Handle post-login redirection when both user and profile are loaded
   useEffect(() => {
+    // Only redirect if we have complete auth data and a pending redirect
     if (!isLoading && user && profile && isLoginRedirectPending) {
-      console.log(`Post-login redirect: User role is ${profile.role}`);
+      console.log(`Post-login redirect: User role is ${profile.role}, current path: ${location.pathname}`);
       
+      // Clear the redirect flag immediately to prevent multiple redirections
       setIsLoginRedirectPending(false);
       
-      // Role-based redirection - ensure correct paths
+      // Determine target path based on role
+      let targetPath = '';
       switch (profile.role) {
         case 'admin':
-          console.log('Redirecting admin to /admin');
-          navigate('/admin', { replace: true });
+          targetPath = '/admin';
           break;
         case 'staff':
-          console.log('Redirecting staff to /staff');
-          navigate('/staff', { replace: true });
+          targetPath = '/staff';
           break;
         case 'user':
         default:
-          console.log('Redirecting user to /user/dashboard');
-          navigate('/user/dashboard', { replace: true });
+          targetPath = '/user/dashboard';
           break;
       }
+      
+      console.log(`Redirecting ${profile.role} to ${targetPath}`);
+      
+      // Only redirect if we're not already on the target path
+      if (location.pathname !== targetPath) {
+        navigate(targetPath, { replace: true });
+      }
     }
-  }, [user, profile, isLoading, isLoginRedirectPending, navigate, setIsLoginRedirectPending]);
+  }, [user, profile, isLoading, isLoginRedirectPending, navigate, location.pathname, setIsLoginRedirectPending]);
 
   // Handle role-based access control for protected routes
   useEffect(() => {
     if (!isLoading && user && profile?.role) {
       const path = location.pathname;
+      
+      // Skip access control during login redirect
+      if (isLoginRedirectPending) return;
       
       // Only redirect from incorrect role-specific routes
       const isUserRoute = path.startsWith('/user');
@@ -105,7 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
     }
-  }, [profile, isLoading, user, location.pathname, navigate]);
+  }, [profile, isLoading, user, location.pathname, navigate, isLoginRedirectPending]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     console.log(`AuthContext: Starting login process for ${email}`);

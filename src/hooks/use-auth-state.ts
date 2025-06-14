@@ -12,58 +12,76 @@ export const useAuthState = () => {
   const [isLoginRedirectPending, setIsLoginRedirectPending] = useState(false);
   const { fetchProfile } = useAuthService();
   
+  const loadUserAndProfile = async (session: any) => {
+    if (!session?.user) {
+      console.log("No session user, clearing state");
+      setUser(null);
+      setProfile(null);
+      return;
+    }
+
+    console.log("Loading user and profile for:", session.user.id);
+    
+    const authUser: AuthUser = {
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.user_metadata?.name || 
+            `${session.user.user_metadata?.first_name || ''} ${session.user.user_metadata?.last_name || ''}`.trim()
+    };
+    
+    setUser(authUser);
+    console.log("User set, now fetching profile...");
+    
+    try {
+      const userProfile = await fetchProfile(session.user.id);
+      if (userProfile) {
+        console.log("Profile loaded successfully with role:", userProfile.role);
+        setProfile(userProfile);
+        setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
+      } else {
+        console.log("No profile found for user");
+        setProfile(null);
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      setProfile(null);
+    }
+  };
+  
   useEffect(() => {
     let mounted = true;
     
-    const initializeAuth = async () => {
-      try {
-        console.log("Initializing auth state...");
+    console.log("Initializing auth state...");
+    
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("Auth state changed:", event, session?.user?.id);
         
-        // Set up auth state listener first
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            console.log("Auth state changed:", event, session?.user?.id);
-            
-            if (!mounted) return;
-            
-            if (session?.user) {
-              const authUser: AuthUser = {
-                id: session.user.id,
-                email: session.user.email,
-                name: session.user.user_metadata?.name || 
-                      `${session.user.user_metadata?.first_name || ''} ${session.user.user_metadata?.last_name || ''}`.trim()
-              };
-              
-              setUser(authUser);
-              console.log("User set, now fetching profile...");
-              
-              // Fetch profile immediately after setting user
-              try {
-                const userProfile = await fetchProfile(session.user.id);
-                if (mounted && userProfile) {
-                  console.log("Profile loaded with role:", userProfile.role);
-                  setProfile(userProfile);
-                  setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
-                } else {
-                  console.log("No profile found for user");
-                }
-              } catch (error) {
-                console.error("Error fetching profile:", error);
-              }
-            } else {
-              console.log("No session, clearing user and profile");
-              setUser(null);
-              setProfile(null);
-              setIsLoginRedirectPending(false);
-            }
-            
-            if (mounted) {
-              setIsLoading(false);
-            }
-          }
-        );
+        if (!mounted) return;
+        
+        if (event === 'SIGNED_IN' && session) {
+          console.log("User signed in, loading profile...");
+          await loadUserAndProfile(session);
+        } else if (event === 'SIGNED_OUT') {
+          console.log("User signed out, clearing state");
+          setUser(null);
+          setProfile(null);
+          setIsLoginRedirectPending(false);
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          console.log("Token refreshed, updating user data");
+          await loadUserAndProfile(session);
+        }
+        
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    );
 
-        // Get initial session
+    // Get initial session
+    const initializeSession = async () => {
+      try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -74,39 +92,16 @@ export const useAuthState = () => {
           return;
         }
         
-        // If we have a session but the auth state change hasn't fired yet
         if (session?.user && mounted) {
-          console.log("Initial session found, setting up user...");
-          const authUser: AuthUser = {
-            id: session.user.id,
-            email: session.user.email,
-            name: session.user.user_metadata?.name || 
-                  `${session.user.user_metadata?.first_name || ''} ${session.user.user_metadata?.last_name || ''}`.trim()
-          };
-          
-          setUser(authUser);
-          
-          try {
-            const userProfile = await fetchProfile(session.user.id);
-            if (mounted && userProfile) {
-              console.log("Initial profile loaded with role:", userProfile.role);
-              setProfile(userProfile);
-              setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
-            }
-          } catch (error) {
-            console.error("Error fetching initial profile:", error);
-          }
+          console.log("Initial session found, loading user and profile...");
+          await loadUserAndProfile(session);
         }
         
         if (mounted) {
           setIsLoading(false);
         }
-        
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('Error initializing session:', error);
         if (mounted) {
           setUser(null);
           setProfile(null);
@@ -115,10 +110,11 @@ export const useAuthState = () => {
       }
     };
 
-    initializeAuth();
+    initializeSession();
     
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
   }, [fetchProfile]);
 

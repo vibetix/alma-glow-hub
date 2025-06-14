@@ -48,11 +48,20 @@ export const useAuthService = () => {
         password 
       });
 
-      console.log("AuthService: Supabase response:", { data: !!data, error });
+      console.log("AuthService: Supabase response:", { 
+        hasUser: !!data?.user, 
+        userId: data?.user?.id,
+        error: error?.message 
+      });
 
       if (error) {
         console.error("AuthService: Supabase login error:", error);
-        throw error;
+        toast({
+          title: "Login failed",
+          description: error.message || "Invalid email or password",
+          variant: "destructive",
+        });
+        return false;
       }
 
       if (data?.user) {
@@ -66,6 +75,11 @@ export const useAuthService = () => {
         return true;
       } else {
         console.log("AuthService: No user data returned");
+        toast({
+          title: "Login failed",
+          description: "Authentication failed. Please try again.",
+          variant: "destructive",
+        });
         return false;
       }
     } catch (error: any) {
