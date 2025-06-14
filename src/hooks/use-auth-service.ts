@@ -7,6 +7,8 @@ import { Profile } from '@/types/database';
 export const useAuthService = () => {
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
+      console.log("AuthService: Fetching profile for user:", userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -14,38 +16,61 @@ export const useAuthService = () => {
         .single();
 
       if (error) {
+        console.error("AuthService: Profile fetch error:", error);
         throw error;
       }
 
       if (data) {
+        console.log("AuthService: Profile fetched successfully:", data);
         // Ensure role is cast to the proper type
         return {
           ...data,
           role: data.role as 'admin' | 'staff' | 'user'
         };
       }
+      
+      console.log("AuthService: No profile data found");
       return null;
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('AuthService: Error fetching profile:', error);
       return null;
     }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    console.log("AuthService: Starting login process");
+    
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log("AuthService: Calling Supabase signInWithPassword");
+      
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
+
+      console.log("AuthService: Supabase response:", { data: !!data, error });
 
       if (error) {
+        console.error("AuthService: Supabase login error:", error);
         throw error;
       }
 
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
-      });
+      if (data?.user) {
+        console.log("AuthService: User authenticated successfully:", data.user.id);
+        
+        toast({
+          title: "Login successful",
+          description: "Welcome back!",
+        });
 
-      return true;
+        return true;
+      } else {
+        console.log("AuthService: No user data returned");
+        return false;
+      }
     } catch (error: any) {
+      console.error("AuthService: Login error:", error);
+      
       toast({
         title: "Login failed",
         description: error.message || "There was an error logging in",

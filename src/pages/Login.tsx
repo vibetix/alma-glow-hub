@@ -37,10 +37,20 @@ const Login = () => {
   });
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
+    console.log("Form submitted with values:", { email: values.email, password: "***" });
+    
+    if (isSubmitting || isLoading) {
+      console.log("Already submitting or loading, skipping");
+      return;
+    }
+
     setIsSubmitting(true);
+    
     try {
-      console.log(`Submitting login form for email: ${values.email}`);
+      console.log(`Attempting login for email: ${values.email}`);
       const success = await login(values.email, values.password);
+      
+      console.log("Login result:", success);
       
       if (success) {
         console.log("Login successful in Login component");
@@ -48,17 +58,28 @@ const Login = () => {
           title: "Login Successful",
           description: "Redirecting to your dashboard...",
         });
+        // Don't manually redirect here - let AuthContext handle it
       } else {
+        console.log("Login failed");
         toast({
           title: "Login Failed",
           description: "Invalid email or password.",
           variant: "destructive",
         });
       }
+    } catch (error) {
+      console.error("Login error in component:", error);
+      toast({
+        title: "Login Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const isFormDisabled = isSubmitting || isLoading;
 
   return (
     <PageTransition>
@@ -81,7 +102,11 @@ const Login = () => {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="your.email@example.com" {...field} />
+                        <Input 
+                          placeholder="your.email@example.com" 
+                          disabled={isFormDisabled}
+                          {...field} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -95,7 +120,12 @@ const Login = () => {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
+                        <Input 
+                          type="password" 
+                          placeholder="••••••••" 
+                          disabled={isFormDisabled}
+                          {...field} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -113,9 +143,9 @@ const Login = () => {
                 <Button
                   type="submit"
                   className="w-full bg-alma-gold hover:bg-alma-gold/90"
-                  disabled={isSubmitting || isLoading}
+                  disabled={isFormDisabled}
                 >
-                  {isSubmitting ? (
+                  {isFormDisabled ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Signing in...

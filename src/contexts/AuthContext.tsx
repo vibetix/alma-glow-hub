@@ -1,4 +1,3 @@
-
 import { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthService } from '@/hooks/use-auth-service';
@@ -109,19 +108,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [profile, isLoading, user, location.pathname, navigate]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    console.log(`AuthContext: Starting login process for ${email}`);
+    
     try {
-      console.log(`Attempting login for email: ${email}`);
+      console.log("AuthContext: Calling auth service login");
       const success = await authLogin(email, password);
       
+      console.log("AuthContext: Auth service login result:", success);
+      
       if (success) {
-        console.log("Login successful, setting redirect flag");
+        console.log("AuthContext: Login successful, setting redirect flag");
         setIsLoginRedirectPending(true);
         return true;
+      } else {
+        console.log("AuthContext: Login failed");
+        return false;
       }
-      
-      return false;
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("AuthContext: Login error:", error);
       return false;
     }
   };
