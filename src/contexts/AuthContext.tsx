@@ -75,52 +75,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [profile, isLoading, user, redirectBasedOnRole, location.pathname]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
     try {
       console.log(`Attempting login for email: ${email}`);
       const success = await authLogin(email, password);
       
       if (success) {
-        console.log("Login successful, waiting for profile to load...");
+        console.log("Login successful, redirecting based on role...");
         
-        // Wait for profile to be loaded before redirecting
-        let attempts = 0;
-        const maxAttempts = 10;
+        // Simple redirect logic - let the auth state change handle the redirection
+        setTimeout(() => {
+          if (profile) {
+            console.log(`Redirecting user with role: ${profile.role}`);
+            redirectBasedOnRole(profile);
+          } else {
+            // Fallback redirect
+            navigate('/user/dashboard');
+          }
+        }, 1000);
         
-        const waitForProfile = () => {
-          return new Promise<void>((resolve) => {
-            const checkProfile = () => {
-              attempts++;
-              console.log(`Checking for profile data, attempt ${attempts}`);
-              
-              // Get the current auth state
-              const currentUser = user;
-              const currentProfile = profile;
-              
-              if (currentProfile && currentUser) {
-                console.log(`Profile loaded for user ${currentUser.id} with role: ${currentProfile.role}`);
-                console.log(`Redirecting ${currentProfile.role} to appropriate dashboard`);
-                redirectBasedOnRole(currentProfile);
-                resolve();
-              } else if (attempts >= maxAttempts) {
-                console.log("Max attempts reached, redirecting to default dashboard");
-                navigate('/user/dashboard');
-                resolve();
-              } else {
-                setTimeout(checkProfile, 200);
-              }
-            };
-            checkProfile();
-          });
-        };
-        
-        await waitForProfile();
         return true;
       }
       
       return false;
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error("Login error:", error);
+      return false;
     }
   };
 
@@ -155,18 +134,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const contextValue: AuthContextType = {
+    user,
+    profile,
+    isAuthenticated: !!user,
+    isLoading,
+    login,
+    signup,
+    logout,
+  };
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        profile,
-        isAuthenticated: !!user,
-        isLoading,
-        login,
-        signup,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

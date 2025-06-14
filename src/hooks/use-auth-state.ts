@@ -14,14 +14,18 @@ export const useAuthState = () => {
   useEffect(() => {
     let mounted = true;
     
-    const setupAuth = async () => {
+    const initializeAuth = async () => {
       try {
-        // Set up auth state listener
+        console.log("Initializing auth state...");
+        
+        // Set up auth state listener first
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
-            console.log("Auth state changed:", event);
+            console.log("Auth state changed:", event, session?.user?.id);
             
-            if (session?.user && mounted) {
+            if (!mounted) return;
+            
+            if (session?.user) {
               const authUser: AuthUser = {
                 id: session.user.id,
                 email: session.user.email,
@@ -31,37 +35,39 @@ export const useAuthState = () => {
               
               setUser(authUser);
               
-              // Fetch profile data immediately
+              // Fetch profile in the background
               try {
-                console.log("Fetching profile for user:", authUser.id);
                 const userProfile = await fetchProfile(session.user.id);
-                console.log("Profile fetched:", userProfile);
-                
-                if (mounted) {
+                if (mounted && userProfile) {
                   setProfile(userProfile);
-                  
-                  if (userProfile) {
-                    setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
-                  }
+                  setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
                 }
               } catch (error) {
                 console.error("Error fetching profile:", error);
-              } finally {
-                if (mounted) {
-                  setIsLoading(false);
-                }
               }
-            } else if (mounted) {
+            } else {
               setUser(null);
               setProfile(null);
+            }
+            
+            if (mounted) {
               setIsLoading(false);
             }
           }
         );
 
-        // Check for existing session
-        const { data: { session } } = await supabase.auth.getSession();
+        // Get initial session
+        const { data: { session }, error } = await supabase.auth.getSession();
         
+        if (error) {
+          console.error("Error getting session:", error);
+          if (mounted) {
+            setIsLoading(false);
+          }
+          return;
+        }
+        
+        // If we have a session but the auth state change hasn't fired yet
         if (session?.user && mounted) {
           const authUser: AuthUser = {
             id: session.user.id,
@@ -73,25 +79,17 @@ export const useAuthState = () => {
           setUser(authUser);
           
           try {
-            console.log("Fetching initial profile for user:", authUser.id);
             const userProfile = await fetchProfile(session.user.id);
-            console.log("Initial profile fetched:", userProfile);
-            
-            if (mounted) {
+            if (mounted && userProfile) {
               setProfile(userProfile);
-              
-              if (userProfile) {
-                setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
-              }
+              setUser(prev => prev ? { ...prev, role: userProfile.role } : null);
             }
           } catch (error) {
             console.error("Error fetching initial profile:", error);
-          } finally {
-            if (mounted) {
-              setIsLoading(false);
-            }
           }
-        } else if (mounted) {
+        }
+        
+        if (mounted) {
           setIsLoading(false);
         }
         
@@ -99,27 +97,21 @@ export const useAuthState = () => {
           subscription.unsubscribe();
         };
       } catch (error) {
-        console.error('Error setting up auth:', error);
+        console.error('Error initializing auth:', error);
         if (mounted) {
           setUser(null);
           setProfile(null);
           setIsLoading(false);
         }
-        return () => {};
       }
     };
 
-    const cleanup = setupAuth();
+    initializeAuth();
     
     return () => {
       mounted = false;
-      cleanup.then(unsubscribe => {
-        if (typeof unsubscribe === 'function') {
-          unsubscribe();
-        }
-      });
     };
-  }, [fetchProfile]);
+  }, []); // Remove fetchProfile dependency to avoid recreation
 
   return {
     user,
