@@ -262,10 +262,11 @@ const App = () => (
               } 
             />
             
-            {/* 404 Route */}
-            <Route path="*" element={<NotFound />} />
             {/* Admin Setup Route */}
             <Route path="/setup-admin" element={<TestUserSetup />} />
+            
+            {/* 404 Route */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
