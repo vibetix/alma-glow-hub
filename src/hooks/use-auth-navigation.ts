@@ -16,21 +16,27 @@ export const useAuthNavigation = () => {
     if (profile.role === 'admin') {
       navigate('/admin');
     } else {
-      // All non-admin users go to home page
-      navigate('/');
+      // All non-admin users go to user dashboard
+      navigate('/user');
     }
   };
 
   const getDashboardLink = (profile: Profile | null) => {
-    if (!profile || profile.role !== 'admin') return '/';
+    if (!profile) return '/login';
     
-    return '/admin';
+    if (profile.role === 'admin') return '/admin';
+    
+    // All other users go to user dashboard
+    return '/user';
   };
 
   const getProfileLink = (profile: Profile | null) => {
-    if (!profile || profile.role !== 'admin') return '/';
+    if (!profile) return '/login';
     
-    return '/admin/settings';
+    if (profile.role === 'admin') return '/admin/settings';
+    
+    // All non-admin users go to user profile
+    return '/user/profile';
   };
 
   return {
