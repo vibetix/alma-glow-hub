@@ -48,7 +48,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           break;
         case 'user':
         default:
+<<<<<<< Updated upstream
           targetPath = '/user/dashboard';
+=======
+          console.log('Redirecting user to /user/dashboard');
+          navigate('/pages/user', { replace: true });
+>>>>>>> Stashed changes
           break;
       }
       
@@ -70,9 +75,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (isLoginRedirectPending) return;
       
       // Only redirect from incorrect role-specific routes
-      const isUserRoute = path.startsWith('/user');
-      const isAdminRoute = path.startsWith('/admin');
-      const isStaffRoute = path.startsWith('/staff');
+      const isUserRoute = path.startsWith('pages/user');
+      const isAdminRoute = path.startsWith('pages/admin');
+      const isStaffRoute = path.startsWith('pages/staff');
       
       if (isUserRoute && profile.role !== 'user') {
         console.log(`User with role ${profile.role} trying to access user route, redirecting`);
@@ -101,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "You do not have permission to access the admin dashboard.",
           variant: "destructive",
         });
-        navigate('/user/dashboard', { replace: true });
+        navigate('/pages/admin', { replace: true });
         return;
       }
       
@@ -112,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "You do not have permission to access the staff dashboard.",
           variant: "destructive",
         });
-        navigate('/user/dashboard', { replace: true });
+        navigate('/pages/staff', { replace: true });
         return;
       }
     }
