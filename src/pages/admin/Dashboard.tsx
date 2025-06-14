@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { Users, Package, ShoppingCart, Calendar, DollarSign, TrendingUp, AlertTriangle, Activity } from "lucide-react";
+import { RealTimeNotifications } from "@/components/admin/RealTimeNotifications";
+import { AdvancedAnalytics } from "@/components/admin/AdvancedAnalytics";
 
 const Dashboard = () => {
   // Fetch dashboard metrics
@@ -78,6 +80,9 @@ const Dashboard = () => {
   return (
     <AdminLayout title="Dashboard">
       <div className="space-y-6">
+        {/* Real-time Notifications */}
+        <RealTimeNotifications />
+
         {/* Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
@@ -124,6 +129,9 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Advanced Analytics */}
+        <AdvancedAnalytics />
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
