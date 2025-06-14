@@ -85,6 +85,10 @@ export const Navbar = () => {
     }
   };
 
+  const getUserName = () => {
+    return user?.name || user?.email?.split('@')[0] || 'User';
+  };
+
   const getInitials = (name?: string) => {
     if (!name) return 'U';
     return name.charAt(0).toUpperCase();
@@ -144,18 +148,18 @@ export const Navbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-alma-darkGreen hover:text-alma-gold">
                   <div className="w-6 h-6 rounded-full bg-alma-gold text-white flex items-center justify-center text-xs font-bold mr-2">
-                    {getInitials(user?.name)}
+                    {getInitials(getUserName())}
                   </div>
-                  <span className="max-w-[80px] truncate">{user?.name || 'User'}</span>
+                  <span className="max-w-[80px] truncate">{getUserName()}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-alma-gold/80 text-white flex items-center justify-center text-xs font-bold">
-                    {getInitials(user?.name)}
+                    {getInitials(getUserName())}
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-medium">{user?.name}</span>
+                    <span className="font-medium">{getUserName()}</span>
                     <span className="text-xs text-gray-500">{profile?.role}</span>
                   </div>
                 </DropdownMenuLabel>
@@ -233,9 +237,9 @@ export const Navbar = () => {
                 <div className="flex flex-col space-y-3">
                   <div className="flex items-center">
                     <div className="w-6 h-6 rounded-full bg-alma-gold text-white flex items-center justify-center text-xs font-bold mr-2">
-                      {getInitials(user?.name)}
+                      {getInitials(getUserName())}
                     </div>
-                    <span>{user?.name || 'User'}</span>
+                    <span>{getUserName()}</span>
                     <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded-full">{profile?.role}</span>
                   </div>
                   <Link

@@ -19,9 +19,10 @@ import {
 
 type StaffLayoutProps = {
   children: React.ReactNode;
+  title?: string;
 };
 
-export const StaffLayout = ({ children }: StaffLayoutProps) => {
+export const StaffLayout = ({ children, title = "Staff Portal" }: StaffLayoutProps) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,10 +30,6 @@ export const StaffLayout = ({ children }: StaffLayoutProps) => {
   const handleLogout = () => {
     logout();
     navigate('/login');
-  };
-
-  const handleAvailabilityClick = () => {
-    navigate('/staff/time');
   };
 
   const sidebarLinks = [
@@ -86,6 +83,10 @@ export const StaffLayout = ({ children }: StaffLayoutProps) => {
     },
   ];
 
+  const getUserName = () => {
+    return user?.name || user?.email?.split('@')[0] || 'User';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b sticky top-0 z-30">
@@ -99,12 +100,12 @@ export const StaffLayout = ({ children }: StaffLayoutProps) => {
               />
             </Link>
             <Separator orientation="vertical" className="h-8 mx-4" />
-            <h1 className="text-lg font-medium">Staff Portal</h1>
+            <h1 className="text-lg font-medium">{title}</h1>
           </div>
           
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm">{user?.name}</span>
+              <span className="text-sm">{getUserName()}</span>
               <AuthStatusBadge />
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>

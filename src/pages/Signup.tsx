@@ -57,17 +57,7 @@ const Signup = () => {
       );
       
       if (success) {
-        toast({
-          title: "Account Created",
-          description: "Your user account has been successfully created.",
-        });
         navigate('/login');
-      } else {
-        toast({
-          title: "Signup Failed",
-          description: "Unable to create account. Please try again.",
-          variant: "destructive",
-        });
       }
     } finally {
       setIsSubmitting(false);

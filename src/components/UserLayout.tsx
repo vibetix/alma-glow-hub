@@ -58,6 +58,14 @@ export const UserLayout = ({ children, title }: UserLayoutProps) => {
     navigate("/login");
   };
 
+  const getUserName = () => {
+    return user?.name || user?.email?.split('@')[0] || 'User';
+  };
+
+  const getInitials = (name: string) => {
+    return name.charAt(0).toUpperCase();
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Top navigation for mobile */}
@@ -114,10 +122,10 @@ export const UserLayout = ({ children, title }: UserLayoutProps) => {
           <div className="p-4 border-b">
             <div className="flex items-center">
               <div className="w-10 h-10 bg-alma-gold rounded-full flex items-center justify-center text-white font-bold">
-                {user?.name.charAt(0) || 'U'}
+                {getInitials(getUserName())}
               </div>
               <div className="ml-3">
-                <div className="font-medium">{user?.name}</div>
+                <div className="font-medium">{getUserName()}</div>
                 <div className="text-xs text-gray-500">{user?.email}</div>
               </div>
             </div>
@@ -186,10 +194,10 @@ export const UserLayout = ({ children, title }: UserLayoutProps) => {
             <div className="mb-6 px-4">
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-alma-gold rounded-full flex items-center justify-center text-white font-bold">
-                  {user?.name.charAt(0) || 'U'}
+                  {getInitials(getUserName())}
                 </div>
                 <div className="ml-3">
-                  <div className="font-medium">{user?.name}</div>
+                  <div className="font-medium">{getUserName()}</div>
                   <div className="text-xs text-gray-500">{user?.email}</div>
                 </div>
               </div>

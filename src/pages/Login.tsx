@@ -54,8 +54,7 @@ const Login = () => {
       
       if (success) {
         console.log("Login successful, user should be redirected automatically");
-        // Don't show toast here - auth service already shows it
-        // Don't manually redirect - AuthContext handles it
+        // Success toast is handled in auth service
       } else {
         console.log("Login failed");
         // Error toast is handled in auth service

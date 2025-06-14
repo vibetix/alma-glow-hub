@@ -35,6 +35,10 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     navigate('/login');
   };
 
+  const getUserName = () => {
+    return user?.name || user?.email?.split('@')[0] || 'User';
+  };
+
   const sidebarLinks = [
     {
       title: "Dashboard",
@@ -110,7 +114,7 @@ export const AdminLayout = ({ children, title }: AdminLayoutProps) => {
           
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm">{user?.name}</span>
+              <span className="text-sm">{getUserName()}</span>
               <AuthStatusBadge />
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
